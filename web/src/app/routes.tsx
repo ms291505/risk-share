@@ -1,5 +1,7 @@
-import { Navigate, type RouteObject } from 'react-router'
+import type { RouteObject } from 'react-router'
 import { AmountSetsPage } from '../pages/AmountSetsPage'
+import { ErrorPage } from '../pages/ErrorPage'
+import { HomePage } from '../pages/HomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { ScenariosPage } from '../pages/ScenariosPage'
 import { SensitivityPage } from '../pages/SensitivityPage'
@@ -12,8 +14,9 @@ export const routes: RouteObject[] = [
   {
     path: '/',
     element: <AppShell />,
+    errorElement: <ErrorPage />,
     children: [
-      { index: true, element: <Navigate to="/terms" replace /> },
+      { index: true, element: <HomePage /> },
       { path: 'workspace', element: <WorkspacePage /> },
       { path: 'amounts/:amountSetId?', element: <AmountSetsPage /> },
       { path: 'terms/:termsId?', element: <TermsPage /> },

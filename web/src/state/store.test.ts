@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { HISTORY_LIMIT, selectCanRedo, selectCanUndo, useWorkspaceStore } from './store'
+import { emptyWorkspace } from './workspace'
 
 const store = useWorkspaceStore
 const notes = () => store.getState().workspace.notes
 
 describe('workspace store undo/redo (§12)', () => {
-  beforeEach(() => store.setState(store.getInitialState(), true))
+  beforeEach(() => {
+    store.getState().setReadOnly(false)
+    store.getState().load(emptyWorkspace('en-US'))
+  })
 
   it('round-trips update, undo and redo', () => {
     store.getState().update('Edit notes', (w) => {
@@ -51,5 +55,37 @@ describe('workspace store undo/redo (§12)', () => {
     expect(store.getState().past).toHaveLength(HISTORY_LIMIT)
     while (store.getState().undo() !== null);
     expect(notes()).toBe('5')
+  })
+
+  it('replaces the whole workspace as one undoable step', () => {
+    const replacement = { ...emptyWorkspace('de-DE'), notes: 'imported' }
+    store.getState().update('Import workspace', () => replacement)
+    expect(store.getState().workspace).toEqual(replacement)
+    store.getState().undo()
+    expect(store.getState().workspace.settings.locale).toBe('en-US')
+  })
+
+  it('loads without an undo step and clears history', () => {
+    store.getState().update('Edit notes', (w) => {
+      w.notes = 'a'
+    })
+    store.getState().load({ ...emptyWorkspace('en-US'), notes: 'loaded' })
+    expect(notes()).toBe('loaded')
+    expect(selectCanUndo(store.getState())).toBe(false)
+    expect(store.getState().undo()).toBeNull()
+  })
+
+  it('ignores changes and undo/redo while read-only', () => {
+    store.getState().update('Edit notes', (w) => {
+      w.notes = 'a'
+    })
+    store.getState().setReadOnly(true)
+    store.getState().update('Edit notes', (w) => {
+      w.notes = 'b'
+    })
+    expect(notes()).toBe('a')
+    expect(selectCanUndo(store.getState())).toBe(false)
+    expect(store.getState().undo()).toBeNull()
+    expect(notes()).toBe('a')
   })
 })

@@ -8,6 +8,7 @@ export interface ChartTheme {
   reference: string
   corridor: string
   tooltipBackground: string
+  /** For the net position per party chart (§10.3). */
   riskBearer: string
   counterparty: string
   fontFamily: string
@@ -24,7 +25,10 @@ export function useChartTheme(): ChartTheme {
   const theme = useTheme()
   const { colorScheme } = useColorScheme()
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
-  const palette = theme.colorSchemes[colorScheme ?? 'light']?.palette ?? theme.palette
+  // colorScheme can be undefined before MUI resolves the mode; fall back to the system setting.
+  const prefersDark = useMediaQuery('(prefers-color-scheme: dark)', { noSsr: true })
+  const scheme = colorScheme ?? (prefersDark ? 'dark' : 'light')
+  const palette = theme.colorSchemes[scheme]?.palette ?? theme.palette
   return {
     text: palette.text.secondary,
     grid: palette.divider,

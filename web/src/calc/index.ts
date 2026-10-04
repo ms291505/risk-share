@@ -20,7 +20,14 @@ export {
   type SweepSeries,
   type SweepPoint,
 } from './sweep'
-export { settlementCurve, type SettlementCurve, type ThresholdMarker } from './curve'
+export {
+  settlementCurve,
+  curveBreakpoints,
+  type SettlementCurve,
+  type CurveAxis,
+  type CurvePoint,
+  type ThresholdMarker,
+} from './curve'
 export {
   rescaleAmount,
   rescaleAmountSet,

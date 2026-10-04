@@ -14,6 +14,9 @@ declare module '@mui/material/styles' {
   }
 }
 
+/** localStorage key for light/dark/system. Must match the inline script in index.html. */
+export const MODE_STORAGE_KEY = 'risk-share-mode'
+
 export const theme = createTheme({
   cssVariables: { colorSchemeSelector: 'class' },
   colorSchemes: {

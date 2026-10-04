@@ -1,10 +1,14 @@
 import type Big from 'big.js'
-import type { Parties } from '../calc'
+import { minorUnits, type Parties } from '../calc'
 
 /** Exact `Big` values, or display-only numbers (e.g. chart ticks). */
 type Num = Big | number
 
-/** Big values are passed to Intl as decimal strings so formatting stays exact. */
+/**
+ * Big values are passed to Intl as decimal strings so formatting stays exact.
+ * That needs Intl.NumberFormat v3; older engines silently convert strings to
+ * Number, which is why it is part of the supported-browser check (§1.6).
+ */
 const exact = (x: Num) => (typeof x === 'number' ? x : (x.toFixed() as `${number}`))
 
 export interface Formatters {
@@ -14,13 +18,21 @@ export interface Formatters {
   signedCurrency(x: Num): string
   /** Short form for chart axes, e.g. "$50K". */
   compactCurrency(x: number): string
-  /** A percentage value such as 85.0 → "85.0%", always with `decimals` decimals (§5.4). */
+  /**
+   * A percentage value such as 85.0 → "85.0%", always with `decimals` decimals
+   * (§5.4). Intl rounds half away from zero, so result values must already be
+   * rounded to `decimals` with the terms' mode (use the CR from `settle` or
+   * `computeCR`), or the display could disagree with the settlement.
+   */
   pct(x: Num, decimals: number): string
 }
 
 export function makeFormatters(locale: string, currency: string): Formatters {
-  const money = new Intl.NumberFormat(locale, { style: 'currency', currency })
-  const signedMoney = new Intl.NumberFormat(locale, { style: 'currency', currency, signDisplay: 'exceptZero' })
+  // Same minor unit as calc's rounding, so display and settlement agree by construction.
+  const digits = minorUnits(currency)
+  const moneyOptions = { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits } as const
+  const money = new Intl.NumberFormat(locale, moneyOptions)
+  const signedMoney = new Intl.NumberFormat(locale, { ...moneyOptions, signDisplay: 'exceptZero' })
   const compact = new Intl.NumberFormat(locale, { style: 'currency', currency, notation: 'compact' })
   const pctFormats = new Map<number, Intl.NumberFormat>()
   const pctFormat = (decimals: number) => {

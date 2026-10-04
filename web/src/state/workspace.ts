@@ -26,6 +26,11 @@ export interface Scenario {
   hidden: boolean
   /** Markdown. */
   notes: string
+  /**
+   * ISO 8601 timestamp. Decides the "earliest-created scenario" (§10.1), so
+   * reordering scenarios never changes it.
+   */
+  createdAt: string
 }
 
 /** A saved sensitivity sweep (§9). */
@@ -47,9 +52,10 @@ export interface FilterView {
   hideTagIds: string[]
 }
 
-/** Everything the workspace JSON export contains (§2.1, §11.2). Arrays are in creation order. */
+/** Everything the workspace JSON export contains (§2.1, §11.2). Arrays are in display order. */
 export interface Workspace {
-  schemaVersion: number
+  /** Loaded files are migrated to exactly this version (§11.2). */
+  schemaVersion: typeof SCHEMA_VERSION
   settings: WorkspaceSettings
   parties: Parties
   terms: Terms[]
@@ -62,6 +68,7 @@ export interface Workspace {
   notes: string
 }
 
+/** A new workspace: always USD, in the browser's locale, with role names as party names (§2.7). */
 export function emptyWorkspace(locale: string = navigator.language): Workspace {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -75,4 +82,9 @@ export function emptyWorkspace(locale: string = navigator.language): Workspace {
     filterViews: [],
     notes: '',
   }
+}
+
+/** True until the user adds terms, amount sets or scenarios. */
+export function isEmptyWorkspace(w: Workspace): boolean {
+  return w.terms.length === 0 && w.amountSets.length === 0 && w.scenarios.length === 0
 }

@@ -22,7 +22,17 @@
    Phone layout is not a priority.
 1. Supported browsers: the latest two major versions of Chrome, Edge,
    Firefox, and Safari (macOS and iPadOS). Other browsers show a dismissible
-   "unsupported browser" notice but are not blocked.
+   "unsupported browser" notice but are not blocked. The notice is based on
+   feature detection, not the user agent: exact amount formatting needs
+   `Intl.NumberFormat` to format decimal strings without converting them to
+   floating point.
+1. **Landing view.** With an empty workspace (no terms, amount sets, or
+   scenarios), the app opens on a welcome view offering "Show me" (§1.4),
+   "Start from a template" (§6.7), and "Import a workspace" (§11.2).
+   Otherwise it opens on Scenarios.
+1. **Appearance.** Users can choose light, dark, or follow the system. The
+   choice is remembered per browser, like the active filter (§8.1.7); it is
+   not part of the workspace export and is not undoable.
 
 ## 2. Workspace
 
@@ -43,6 +53,8 @@
 1. Currency amounts are entered and stored to the currency's minor unit (no
    fractional cents).
 1. Workspace notes support basic markdown (bold, italics, lists, links).
+1. **New workspace defaults**: currency USD, the browser's locale, and party
+   names "Risk-bearer" and "Counterparty".
 
 ## 3. Parties
 
@@ -53,6 +65,10 @@
      (e.g. Bob).
 1. Users can name both parties. Results always show direction clearly
    (who pays whom).
+1. Party names are trimmed of leading/trailing spaces, must be non-empty, are
+   at most 80 characters, and must differ from each other (ignoring case).
+   Invalid names are saved and remain editable, with inline errors (as in
+   §4.7).
 
 ## 4. Amounts (additions & deductions)
 
@@ -136,8 +152,10 @@
 1. Tiers are **marginal** (like tax brackets): each share % applies only to
    its own band, so the settlement is continuous as CR changes.
 1. On the signed scale used by charts, a payment to the counterparty is
-   positive and a payment to the risk-bearer is negative. Axes are labeled
-   with party names (e.g. "↑ Lisa pays Bob / ↓ Bob pays Lisa").
+   positive and a payment to the risk-bearer is negative. The y-axis is
+   labeled with party names at both ends: "↑ Lisa pays Bob" above the plot and
+   "↓ Bob pays Lisa" below it. The labels are part of the chart image, so
+   exports (§11.4) keep them.
 
 ### 6.2 Settlement calculation
 
@@ -292,6 +310,8 @@ For each scenario, show:
 1. Terms, amount sets, and scenarios can be duplicated.
 1. When an amount set or terms is deleted, the confirmation lists the affected
    scenarios (which are deleted too) and saved sweeps (see §9.7).
+1. Scenarios can be reordered. Each scenario records when it was created, so
+   reordering never changes which one is the "earliest-created" (§10.1).
 
 ### 8.1 Visibility & tag filters
 
@@ -396,6 +416,12 @@ For each scenario, show:
    amount set in the earliest-created scenario that uses these terms, or
    $1,000,000 if there is none. It
    is a view setting, not saved data.
+   - The x-axis is the cost ratio for cost ratio terms. For **currency
+     terms** it is gain (+) / loss (−) in currency, so thresholds stay where
+     they were entered when the preview additions change.
+   - The range is automatic: 15 CR points beyond the outermost thresholds, or
+     for currency terms half the span from the outermost loss threshold to
+     the outermost gain threshold (including break-even) on each side.
 1. **Scenarios compared** (bar): settlement per visible scenario.
 1. **Net position per party** (grouped bar): both parties' net positions
    for each visible scenario.
@@ -441,6 +467,12 @@ For each scenario, show:
    active filter selection, chart preview settings, or the tour.
 1. Undo history holds at least the last 100 steps and is not kept across
    reloads.
+1. **Undo steps.** An edit to a text field (including number fields) is one
+   undo step, committed when the field loses focus or Enter is pressed;
+   Escape discards it. For §12.2, "text field" means text-entry inputs and
+   text areas, not checkboxes, radio buttons, or other controls.
+1. Undo/redo shortcuts are inactive while a dialog is open, and undo/redo is
+   unavailable in a read-only tab (§11.1).
 
 ## 13. Accessibility
 
@@ -452,8 +484,10 @@ For each scenario, show:
    always visible. Dialogs trap focus while open and return it to the
    triggering control when closed.
 1. **Charts**: each chart has a short text summary and an accessible table
-   view of its data. Direction (who pays whom), thresholds, and corridors are
-   never conveyed by color alone.
+   view of its data. For a continuous curve, the table lists its breakpoints
+   (the ends of the range and each point where the slope changes) rather than
+   every plotted point. Direction (who pays whom), thresholds, and corridors
+   are never conveyed by color alone.
 1. **Screen readers**: every input has a label, and validation errors are
    programmatically linked to their fields. Result changes, validation
    errors, and undo/redo are announced through polite live regions without
@@ -461,3 +495,5 @@ For each scenario, show:
 1. **Motion and zoom**: the tour and chart animations respect
    `prefers-reduced-motion`. The app remains usable at 200% browser zoom and
    in the operating system's dark and high-contrast (forced colors) modes.
+1. **Navigation**: each view has a unique document title, and moving to a
+   new view moves focus to its main heading.

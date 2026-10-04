@@ -20,9 +20,10 @@ code comments refer to it.
 src/
   calc/      Pure settlement math (no React/DOM). Exact decimals via big.js.
   app/       Theme, providers, app shell, routes, undo shortcuts, live announcer.
-  pages/     One component per route (Workspace, Amount sets, Terms, Scenarios, Sensitivity).
+  pages/     One component per route, plus the welcome and error views.
+  components/ Shared UI: CommitTextField (one undo step per edit), IconMenu, ComingSoonButton.
   state/     Workspace types and the Zustand store with patch-based undo/redo.
-  format/    Locale- and currency-aware formatters.
+  format/    Locale- and currency-aware formatters, validation messages, browser feature check.
   charts/    Recharts charts, wrapped in ChartFrame (summary, data table, export).
 ```
 

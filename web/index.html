@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Risk Share</title>
+    <script>
+      // Applies the saved color scheme before first paint so dark-mode users
+      // don't see a light flash. Mirrors MUI's InitColorSchemeScript; the key
+      // must match MODE_STORAGE_KEY in src/app/theme.ts.
+      try {
+        var mode = localStorage.getItem('risk-share-mode') || 'system'
+        var dark = mode === 'dark' || (mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.add(dark ? 'dark' : 'light')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,5 +1,6 @@
 import AccountBalanceWalletOutlined from '@mui/icons-material/AccountBalanceWalletOutlined'
 import BrightnessMediumOutlined from '@mui/icons-material/BrightnessMediumOutlined'
+import Check from '@mui/icons-material/Check'
 import CompareArrowsOutlined from '@mui/icons-material/CompareArrowsOutlined'
 import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined'
 import ImportExportOutlined from '@mui/icons-material/ImportExportOutlined'
@@ -7,26 +8,29 @@ import RedoOutlined from '@mui/icons-material/RedoOutlined'
 import ShowChartOutlined from '@mui/icons-material/ShowChartOutlined'
 import TuneOutlined from '@mui/icons-material/TuneOutlined'
 import UndoOutlined from '@mui/icons-material/UndoOutlined'
+import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { useColorScheme, useTheme } from '@mui/material/styles'
 import Toolbar from '@mui/material/Toolbar'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
-import { useCallback, useState, type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router'
-import { selectCanRedo, selectCanUndo, useWorkspaceStore } from '../state/store'
-import { useAnnounce } from './announcer'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router'
+import { ComingSoonButton } from '../components/ComingSoonButton'
+import { IconMenu } from '../components/IconMenu'
+import { isSupportedBrowser } from '../format/browserSupport'
+import { downloadWorkspace } from '../state/exportWorkspace'
+import { useWorkspaceStore } from '../state/store'
+import { useUndoRedo } from './useUndoRedo'
 import { useUndoShortcuts } from './useUndoShortcuts'
 
 const NAV: { to: string; label: string; icon: ReactNode }[] = [
@@ -45,6 +49,10 @@ export function AppShell() {
   // Desktop first; on tablets the nav collapses to icons (§1.5).
   const compact = useMediaQuery(theme.breakpoints.down('md'))
   const drawerWidth = compact ? MINI_DRAWER_WIDTH : DRAWER_WIDTH
+  const undoRedo = useUndoRedo()
+  // Registered here rather than in the buttons, so restyling the toolbar can't drop the shortcuts.
+  useUndoShortcuts(undoRedo.undo, undoRedo.redo)
+  useFocusHeadingOnNavigate()
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
@@ -54,14 +62,10 @@ export function AppShell() {
           <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
             Risk Share
           </Typography>
-          <UndoRedoButtons />
-          <Tooltip title="Load a worked example and take a short tour (coming soon)">
-            <span>
-              <Button color="inherit" disabled>
-                Show me
-              </Button>
-            </span>
-          </Tooltip>
+          <UndoRedoButtons {...undoRedo} />
+          <ComingSoonButton color="inherit" reason="Load a worked example and take a short tour (coming soon)">
+            Show me
+          </ComingSoonButton>
           <ImportExportMenu />
           <ColorSchemeMenu />
         </Toolbar>
@@ -100,10 +104,24 @@ export function AppShell() {
         sx={{ flexGrow: 1, minWidth: 0, p: 3, '&:focus': { outline: 'none' } }}
       >
         <Toolbar />
+        <UnsupportedBrowserNotice />
         <Outlet />
       </Box>
     </Box>
   )
+}
+
+/** Moves focus to the new view's h1 after navigation, so screen readers hear the change (§13.6). */
+function useFocusHeadingOnNavigate() {
+  const { pathname } = useLocation()
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    document.querySelector<HTMLElement>('main h1')?.focus()
+  }, [pathname])
 }
 
 /** Hash routing owns the URL fragment, so the skip link moves focus itself. */
@@ -132,32 +150,30 @@ function SkipLink() {
   )
 }
 
-function UndoRedoButtons() {
-  const canUndo = useWorkspaceStore(selectCanUndo)
-  const canRedo = useWorkspaceStore(selectCanRedo)
-  const announce = useAnnounce()
-  const undo = useCallback(() => {
-    const label = useWorkspaceStore.getState().undo()
-    if (label) announce(`Undid: ${label}`)
-  }, [announce])
-  const redo = useCallback(() => {
-    const label = useWorkspaceStore.getState().redo()
-    if (label) announce(`Redid: ${label}`)
-  }, [announce])
-  useUndoShortcuts(undo, redo)
+function UnsupportedBrowserNotice() {
+  const [show, setShow] = useState(() => !isSupportedBrowser())
+  if (!show) return null
+  return (
+    <Alert severity="warning" onClose={() => setShow(false)} sx={{ mb: 2 }}>
+      This browser isn't supported, so some amounts may display incorrectly. Use a recent version of Chrome, Edge,
+      Firefox or Safari.
+    </Alert>
+  )
+}
 
+function UndoRedoButtons(props: { undo(): void; redo(): void; canUndo: boolean; canRedo: boolean }) {
   return (
     <>
       <Tooltip title="Undo">
         <span>
-          <IconButton color="inherit" aria-label="Undo" onClick={undo} disabled={!canUndo}>
+          <IconButton color="inherit" aria-label="Undo" onClick={props.undo} disabled={!props.canUndo}>
             <UndoOutlined />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Redo">
         <span>
-          <IconButton color="inherit" aria-label="Redo" onClick={redo} disabled={!canRedo}>
+          <IconButton color="inherit" aria-label="Redo" onClick={props.redo} disabled={!props.canRedo}>
             <RedoOutlined />
           </IconButton>
         </span>
@@ -167,24 +183,23 @@ function UndoRedoButtons() {
 }
 
 function ImportExportMenu() {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
-    <>
-      <Tooltip title="Import / export">
-        <IconButton
-          color="inherit"
-          aria-label="Import or export"
-          aria-haspopup="menu"
-          onClick={(e) => setAnchor(e.currentTarget)}
+    <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
+      {(close) => [
+        <MenuItem key="import" disabled>
+          Import workspace… (coming soon)
+        </MenuItem>,
+        <MenuItem
+          key="export"
+          onClick={() => {
+            downloadWorkspace(useWorkspaceStore.getState().workspace)
+            close()
+          }}
         >
-          <ImportExportOutlined />
-        </IconButton>
-      </Tooltip>
-      <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
-        <MenuItem disabled>Import workspace…</MenuItem>
-        <MenuItem disabled>Export workspace</MenuItem>
-      </Menu>
-    </>
+          Export workspace
+        </MenuItem>,
+      ]}
+    </IconMenu>
   )
 }
 
@@ -194,35 +209,27 @@ const MODES = [
   { mode: 'dark', label: 'Dark' },
 ] as const
 
+/** Per-browser setting, stored by MUI in localStorage and not exported (§1.8). */
 function ColorSchemeMenu() {
   const { mode, setMode } = useColorScheme()
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   return (
-    <>
-      <Tooltip title="Appearance">
-        <IconButton
-          color="inherit"
-          aria-label="Appearance"
-          aria-haspopup="menu"
-          onClick={(e) => setAnchor(e.currentTarget)}
-        >
-          <BrightnessMediumOutlined />
-        </IconButton>
-      </Tooltip>
-      <Menu anchorEl={anchor} open={anchor !== null} onClose={() => setAnchor(null)}>
-        {MODES.map((m) => (
+    <IconMenu label="Appearance" icon={<BrightnessMediumOutlined />} color="inherit">
+      {(close) =>
+        MODES.map((m) => (
           <MenuItem
             key={m.mode}
-            selected={mode === m.mode}
+            role="menuitemradio"
+            aria-checked={mode === m.mode}
             onClick={() => {
               setMode(m.mode)
-              setAnchor(null)
+              close()
             }}
           >
+            <ListItemIcon>{mode === m.mode && <Check fontSize="small" />}</ListItemIcon>
             {m.label}
           </MenuItem>
-        ))}
-      </Menu>
-    </>
+        ))
+      }
+    </IconMenu>
   )
 }
