@@ -1,0 +1,13 @@
+import Link from '@mui/material/Link'
+import { Link as RouterLink } from 'react-router'
+import { Page } from './Page'
+
+export function NotFoundPage() {
+  return (
+    <Page title="Page not found">
+      <Link component={RouterLink} to="/terms">
+        Go to Terms
+      </Link>
+    </Page>
+  )
+}
