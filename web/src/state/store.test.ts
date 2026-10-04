@@ -53,7 +53,8 @@ describe('workspace store undo/redo (§12)', () => {
       })
     }
     expect(store.getState().past).toHaveLength(HISTORY_LIMIT)
-    while (store.getState().undo() !== null);
+    for (let i = 0; i < HISTORY_LIMIT; i++) store.getState().undo()
+    expect(selectCanUndo(store.getState())).toBe(false)
     expect(notes()).toBe('5')
   })
 
