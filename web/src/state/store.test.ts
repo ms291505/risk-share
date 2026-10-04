@@ -88,4 +88,18 @@ describe('workspace store undo/redo (§12)', () => {
     expect(store.getState().undo()).toBeNull()
     expect(notes()).toBe('a')
   })
+
+  it('blocks redo while read-only', () => {
+    store.getState().update('Edit notes', (w) => {
+      w.notes = 'a'
+    })
+    store.getState().undo()
+    store.getState().setReadOnly(true)
+    expect(selectCanRedo(store.getState())).toBe(false)
+    expect(store.getState().redo()).toBeNull()
+    expect(notes()).toBe('')
+    store.getState().setReadOnly(false)
+    expect(store.getState().redo()).toBe('Edit notes')
+    expect(notes()).toBe('a')
+  })
 })

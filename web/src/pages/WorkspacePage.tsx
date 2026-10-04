@@ -2,15 +2,12 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { PartyRole } from '../calc'
 import { CommitTextField } from '../components/CommitTextField'
-import { MAX_PARTY_NAME_LENGTH, normalizePartyName, partyNameIssues, type PartyNameIssue } from '../state/parties'
+import { issueMessage } from '../format/issues'
+import { normalizeName } from '../state/names'
+import { partyNameIssues } from '../state/parties'
 import { useWorkspaceStore } from '../state/store'
-import { ComingSoon, Page } from './Page'
-
-const ISSUE_MESSAGES: Record<PartyNameIssue, string> = {
-  empty: 'Enter a name.',
-  tooLong: `Use at most ${MAX_PARTY_NAME_LENGTH} characters.`,
-  sameAsOther: 'The two parties need different names.',
-}
+import { ComingSoon } from '../components/ComingSoon'
+import { Page } from './Page'
 
 const ROLES: { role: PartyRole; label: string }[] = [
   { role: 'riskBearer', label: 'Risk-bearer' },
@@ -30,7 +27,7 @@ export function WorkspacePage() {
           Parties
         </Typography>
         {ROLES.map(({ role, label }) => {
-          const issue = issues[role]
+          const issue = issues.find((i) => i.path[0] === role)
           return (
             <CommitTextField
               key={role}
@@ -38,10 +35,10 @@ export function WorkspacePage() {
               value={parties[role]}
               onCommit={(name) =>
                 update(`Rename ${label.toLowerCase()}`, (w) => {
-                  w.parties[role] = normalizePartyName(name)
+                  w.parties[role] = normalizeName(name)
                 })
               }
-              error={issue ? ISSUE_MESSAGES[issue] : null}
+              error={issue ? issueMessage(issue) : null}
               fullWidth
             />
           )

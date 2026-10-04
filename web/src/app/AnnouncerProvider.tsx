@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import { useCallback, useState, type ReactNode } from 'react'
 import { AnnouncerContext } from './announcer'
-import { visuallyHidden } from './visuallyHidden'
+import { visuallyHidden } from '../components/visuallyHidden'
 
 export function AnnouncerProvider({ children }: { children: ReactNode }) {
   // The key re-mounts the text so repeating the same message is announced again.

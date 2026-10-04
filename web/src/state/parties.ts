@@ -1,29 +1,16 @@
-import type { Parties, PartyRole } from '../calc'
+import type { Issue, Parties, PartyRole } from '../calc'
+import { nameIssues, sameName } from './names'
 
-export const MAX_PARTY_NAME_LENGTH = 80
-
-export type PartyNameIssue = 'empty' | 'tooLong' | 'sameAsOther'
-
-/** Party names are trimmed before they're stored (§3.3). */
-export function normalizePartyName(name: string): string {
-  return name.trim()
-}
+const ROLES: PartyRole[] = ['riskBearer', 'counterparty']
 
 /**
- * §3.3: names are non-empty, at most 80 characters, and different from each
- * other ignoring case, so "who pays whom" is never ambiguous.
+ * §3.3: names follow the shared name rules and differ from each other ignoring
+ * case, so "who pays whom" is never ambiguous. Each issue's path is the role.
  */
-export function partyNameIssues(parties: Parties): Partial<Record<PartyRole, PartyNameIssue>> {
-  const issues: Partial<Record<PartyRole, PartyNameIssue>> = {}
-  const roles: PartyRole[] = ['riskBearer', 'counterparty']
-  for (const role of roles) {
-    const name = normalizePartyName(parties[role])
-    if (name === '') issues[role] = 'empty'
-    else if (name.length > MAX_PARTY_NAME_LENGTH) issues[role] = 'tooLong'
+export function partyNameIssues(parties: Parties): Issue[] {
+  const issues = ROLES.flatMap((role) => nameIssues(parties[role], [role]))
+  if (issues.length === 0 && sameName(parties.riskBearer, parties.counterparty)) {
+    issues.push({ code: 'partyNamesSame', path: ['counterparty'] })
   }
-  const same =
-    normalizePartyName(parties.riskBearer).toLocaleLowerCase() ===
-    normalizePartyName(parties.counterparty).toLocaleLowerCase()
-  if (same && !issues.riskBearer && !issues.counterparty) issues.counterparty = 'sameAsOther'
   return issues
 }

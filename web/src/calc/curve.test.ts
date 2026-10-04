@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { expectOk, side, terms, USD } from './__fixtures__/builders'
-import { curveBreakpoints, MAX_CURVE_POINTS, niceStep, settlementCurve, type CurvePoint } from './curve'
-import { D } from './decimal'
+import { curveBreakpoints, MAX_CURVE_POINTS, settlementCurve, type CurvePoint } from './curve'
+import { D, niceStep } from './decimal'
 
 const str = (points: CurvePoint[]) => points.map((p) => [p.x.toString(), p.signed.toString()])
 
@@ -56,7 +56,21 @@ describe('settlementCurve on the currency axis', () => {
   it("doesn't move thresholds when the preview additions change", () => {
     const small = expectOk(settlementCurve(full, D(1000), USD))
     expect(small.thresholds.map((t) => t.x.toString())).toEqual(['100000', '-50000'])
-    expect(small.points[0].x.toString()).toBe('-125000')
+  })
+
+  it('stops at a gain equal to the additions, so deductions are never negative', () => {
+    const c = expectOk(settlementCurve(full, D(120000), USD))
+    expect(c.points.at(-1)!.x.toString()).toBe('120000')
+    // With $1,000 of additions the gain threshold can't be reached, so only the loss side sets the range.
+    const small = expectOk(settlementCurve(full, D(1000), USD))
+    expect([small.points[0].x.toString(), small.points.at(-1)!.x.toString()]).toEqual(['-75000', '1000'])
+  })
+
+  it('rejects an explicit range past the additions', () => {
+    expect(settlementCurve(full, D(1000), USD, { from: D(-1000), to: D(2000) })).toMatchObject({
+      ok: false,
+      issues: [{ code: 'rangeAboveAdditions' }],
+    })
   })
 
   it('includes off-grid thresholds as exact points', () => {
@@ -78,6 +92,11 @@ describe('niceStep', () => {
   it('rounds up to 1, 2 or 5 × 10ⁿ', () => {
     expect([0.03, 1, 1.5, 3, 7, 420].map((x) => niceStep(x).toString())).toEqual(['0.05', '1', '2', '5', '10', '500'])
   })
+
+  it('ignores float noise just above a nice step', () => {
+    expect(niceStep((85.3 - 84.9) / 8).toString()).toBe('0.05')
+    expect(niceStep(0.1 + 0.2 - 0.1).toString()).toBe('0.2')
+  })
 })
 
 describe('curveBreakpoints (§13.3)', () => {
@@ -90,6 +109,25 @@ describe('curveBreakpoints (§13.3)', () => {
       ['85', '0'],
       ['90', '0'],
     ])
+  })
+
+  // Settlements round to cents, so the rounded values wobble along a straight segment.
+  it('ignores cent rounding with non-round additions and shares', () => {
+    const t = terms('gain', { gain: side([['85.0', '33.33']]) })
+    const c = expectOk(settlementCurve(t, D('1234567.89'), USD))
+    expect(curveBreakpoints(c.points).map((p) => p.x.toString())).toEqual(['70', '85', '100'])
+
+    const currency = terms('gain', { gain: side([['12345.67', '33.33']]) }, { unit: 'currency' })
+    const cc = expectOk(settlementCurve(currency, D(1000000), USD))
+    const ends = [cc.points[0].x.toString(), cc.points.at(-1)!.x.toString()]
+    expect(curveBreakpoints(cc.points).map((p) => p.x.toString())).toEqual([ends[0], '12345.67', ends[1]])
+  })
+
+  it('shows an off-grid cap kink as the plotted points either side of it', () => {
+    // 33.33% of the gain reaches the 1,000 cap at a gain of 3,000.30…
+    const capped = terms('gain', { gain: side([['0', '33.33']], { maxPayout: '1000' }) }, { unit: 'currency' })
+    const c = expectOk(settlementCurve(capped, D(10000), USD, { from: D(-1000), to: D(5000) }))
+    expect(curveBreakpoints(c.points).map((p) => p.x.toString())).toEqual(['-1000', '0', '3000', '3010', '5000'])
   })
 
   it('finds cap kinks', () => {

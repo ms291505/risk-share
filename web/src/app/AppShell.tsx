@@ -24,11 +24,11 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { NavLink, Outlet, useLocation, useNavigationType } from 'react-router'
 import { ComingSoonButton } from '../components/ComingSoonButton'
 import { IconMenu } from '../components/IconMenu'
 import { isSupportedBrowser } from '../format/browserSupport'
-import { downloadWorkspace } from '../state/exportWorkspace'
+import { downloadWorkspace } from '../io/exportWorkspace'
 import { useWorkspaceStore } from '../state/store'
 import { useUndoRedo } from './useUndoRedo'
 import { useUndoShortcuts } from './useUndoShortcuts'
@@ -111,17 +111,21 @@ export function AppShell() {
   )
 }
 
-/** Moves focus to the new view's h1 after navigation, so screen readers hear the change (§13.6). */
+/**
+ * Moves focus to the new view's h1 after navigation, so screen readers hear
+ * the change (§13.6). A view is the first path segment: picking an item in a
+ * master-detail view (/terms/:id) keeps focus in the list. Redirects (replace
+ * navigations, such as / → /scenarios on load) aren't a move by the user.
+ */
 function useFocusHeadingOnNavigate() {
-  const { pathname } = useLocation()
-  const first = useRef(true)
+  const view = useLocation().pathname.split('/')[1]
+  const navigationType = useNavigationType()
+  const previous = useRef(view)
   useEffect(() => {
-    if (first.current) {
-      first.current = false
-      return
-    }
-    document.querySelector<HTMLElement>('main h1')?.focus()
-  }, [pathname])
+    if (view === previous.current) return
+    previous.current = view
+    if (navigationType !== 'REPLACE') document.querySelector<HTMLElement>('main h1')?.focus()
+  }, [view, navigationType])
 }
 
 /** Hash routing owns the URL fragment, so the skip link moves focus itself. */

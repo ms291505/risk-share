@@ -28,6 +28,7 @@ import { issueMessages } from '../format/issues'
 import { useFormatters } from '../format/useFormatters'
 import { useWorkspaceStore } from '../state/store'
 import { ChartFrame } from './ChartFrame'
+import { canvasMeasure, fitText, type MeasureText } from './fitText'
 import { niceTicks } from './ticks'
 import { useChartTheme } from './useChartTheme'
 
@@ -80,9 +81,21 @@ export function SettlementCurveChart({ terms, additions }: SettlementCurveChartP
   // Display only: Recharts needs numbers.
   const data = curve.points.map((p) => ({ x: p.x.toNumber(), signed: p.signed.toNumber() }))
   const { ticks, decimals } = niceTicks(data[0].x, data.at(-1)!.x)
+  const first = curve.points[0].x
+  const last = curve.points.at(-1)!.x
+  const onChart = curve.thresholds.filter((t) => t.x.gte(first) && t.x.lte(last))
+  // Currency curves stop at a gain equal to the additions, so higher gain thresholds can't be reached.
+  const unreachable = curve.thresholds.filter((t) => t.x.gt(last))
   const summary = [
     ...summarizeTerms(terms, parties, intlSummaryFormat(currency, locale)),
     `Preview with additions of ${fmt.currency(additions)}.`,
+    ...(unreachable.length
+      ? [
+          `Gains can't exceed the additions, so this preview can't reach ${unreachable
+            .map((t) => `${t.name} (${formatX(t.x)})`)
+            .join(', ')}.`,
+        ]
+      : []),
   ]
   const table = {
     columns: [AXIS_TITLE[axis], 'Settlement', 'Direction'],
@@ -111,8 +124,8 @@ export function SettlementCurveChart({ terms, additions }: SettlementCurveChartP
           <CartesianGrid stroke={ct.grid} strokeDasharray="3 3" />
           {curve.corridor && (
             <ReferenceArea
-              x1={curve.corridor.from.toNumber()}
-              x2={curve.corridor.to.toNumber()}
+              x1={(curve.corridor.from.lt(first) ? first : curve.corridor.from).toNumber()}
+              x2={(curve.corridor.to.gt(last) ? last : curve.corridor.to).toNumber()}
               fill={ct.corridor}
               label={{ value: 'Corridor', position: 'insideBottom', fill: ct.text, fontSize: 12 }}
             />
@@ -128,7 +141,7 @@ export function SettlementCurveChart({ terms, additions }: SettlementCurveChartP
           />
           <YAxis tick={axisTick} stroke={ct.text} width={80} tickFormatter={(v: number) => fmt.compactCurrency(v)} />
           <ReferenceLine y={0} stroke={ct.text} />
-          {curve.thresholds.map((t) => (
+          {onChart.map((t) => (
             <ReferenceLine
               key={`${t.side}-${t.tierId}`}
               x={t.x.toNumber()}
@@ -176,22 +189,31 @@ export function SettlementCurveChart({ terms, additions }: SettlementCurveChartP
 /**
  * The x-axis title and the y-axis direction labels (§6.1.6): "↑ … pays …" above
  * the plot and "↓ … pays …" below it. Drawn inside the SVG so exports keep them.
+ * Long party names are shortened to the plot width; the summary and table keep
+ * them in full.
  */
 function AxisLabels(props: { title: string; up: string; down: string; fill: string; fontFamily: string }) {
   const plot = usePlotArea()
   if (!plot) return null
   const bottom = plot.y + plot.height
+  const measure = canvasMeasure(`12px ${props.fontFamily}`)
   return (
     <g fill={props.fill} fontSize={12} fontFamily={props.fontFamily}>
-      <text x={plot.x} y={plot.y - 12}>
-        {props.up}
-      </text>
+      <FittedText x={plot.x} y={plot.y - 12} text={props.up} maxWidth={plot.width} measure={measure} />
       <text x={plot.x + plot.width / 2} y={bottom + 36} textAnchor="middle" fontSize={14}>
         {props.title}
       </text>
-      <text x={plot.x} y={bottom + 52}>
-        {props.down}
-      </text>
+      <FittedText x={plot.x} y={bottom + 52} text={props.down} maxWidth={plot.width} measure={measure} />
     </g>
+  )
+}
+
+function FittedText(props: { x: number; y: number; text: string; maxWidth: number; measure: MeasureText }) {
+  const shown = fitText(props.text, props.maxWidth, props.measure)
+  return (
+    <text x={props.x} y={props.y}>
+      {shown !== props.text && <title>{props.text}</title>}
+      {shown}
+    </text>
   )
 }

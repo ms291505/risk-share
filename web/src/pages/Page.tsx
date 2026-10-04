@@ -24,7 +24,3 @@ export function Page({ title, children }: { title: string; children?: ReactNode 
     </Stack>
   )
 }
-
-export function ComingSoon({ children }: { children: ReactNode }) {
-  return <Typography color="text.secondary">{children}</Typography>
-}

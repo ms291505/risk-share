@@ -1,4 +1,4 @@
-import type { Workspace } from './workspace'
+import type { Workspace } from '../state/workspace'
 
 export function workspaceFileName(date: Date = new Date()): string {
   return `risk-share-${date.toISOString().slice(0, 10)}.json`

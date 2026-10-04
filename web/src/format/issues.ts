@@ -23,10 +23,14 @@ const MESSAGES: Record<IssueCode, string | ((p: NonNullable<Params>) => string)>
   noTerms: 'Pick at least one set of terms.',
   invalidStep: 'Step must be greater than zero.',
   invalidRange: 'The range start must not be after its end.',
+  rangeAboveAdditions: "The range can't include gains larger than the additions.",
+  nameEmpty: 'Enter a name.',
+  nameTooLong: (p) => `Use at most ${p.max} characters.`,
+  partyNamesSame: 'The two parties need different names.',
   tooManyPoints: (p) => `This range has ${p.count} points; the limit is ${p.max}. Increase the step.`,
 }
 
-/** A user-facing sentence for a validation issue (§6.4). */
+/** A user-facing sentence for a validation issue (§6.4). All validation copy lives here. */
 export function issueMessage(issue: Issue): string {
   const m = MESSAGES[issue.code]
   return typeof m === 'string' ? m : m(issue.params ?? {})

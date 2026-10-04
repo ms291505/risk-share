@@ -3,7 +3,8 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { useMemo, useState } from 'react'
 import { blankTerms, D, templateTerms, type Terms } from '../calc'
 import { SettlementCurveChart } from '../charts/SettlementCurveChart'
-import { ComingSoon, Page } from './Page'
+import { ComingSoon } from '../components/ComingSoon'
+import { Page } from './Page'
 
 /** The §6.6.5 currency example: 50% of gain above $100,000 and 50% of loss above $50,000. */
 function currencyExample(): Terms {

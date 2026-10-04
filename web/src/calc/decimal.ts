@@ -5,8 +5,8 @@ import type { DecimalString, RoundingMode } from './types'
 /**
  * An isolated Big constructor so app-wide config can't leak in or out.
  * Settlement math only divides by powers of ten (exact). Other divisions are
- * for display or counting (unrounded CR, currency thresholds on the CR axis,
- * sweep point counts), where DP = 50 is far more than enough.
+ * for display or counting (unrounded CR, sweep point counts), where DP = 50 is
+ * far more than enough.
  */
 export const D = BigJs()
 D.DP = 50
@@ -59,4 +59,16 @@ export function minBig(a: Big, b: Big): Big {
 export function toDecimalString(x: Big, dp: number): DecimalString {
   const s = x.toFixed(dp)
   return s === '-0' || /^-0\.0+$/.test(s) ? s.slice(1) : s
+}
+
+/**
+ * The smallest 1, 2 or 5 × 10ⁿ that is ≥ x (x > 0), for chart steps and axis
+ * ticks. Only picks a step size, so a number input is precise enough; the
+ * tolerance keeps float noise (0.05000000000001) from jumping a whole step.
+ */
+export function niceStep(x: number): Big {
+  const [mantissa, exp] = x.toExponential().split('e')
+  const m = Number(mantissa)
+  const nice = [1, 2, 5, 10].find((n) => n >= m * (1 - 1e-9))!
+  return D(`${nice}e${exp}`)
 }

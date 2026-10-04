@@ -113,6 +113,11 @@ export type IssueCode =
   | 'noTerms'
   | 'invalidStep'
   | 'invalidRange'
+  | 'rangeAboveAdditions'
+  // Workspace names (§3.3, §8.2), validated in state/names.ts.
+  | 'nameEmpty'
+  | 'nameTooLong'
+  | 'partyNamesSame'
   | 'tooManyPoints'
 
 export interface Issue {

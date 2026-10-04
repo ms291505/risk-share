@@ -66,7 +66,8 @@
 1. Users can name both parties. Results always show direction clearly
    (who pays whom).
 1. Party names are trimmed of leading/trailing spaces, must be non-empty, are
-   at most 80 characters, and must differ from each other (ignoring case).
+   at most 80 characters (an emoji counts as one), and must differ from each
+   other (ignoring case).
    Invalid names are saved and remain editable, with inline errors (as in
    §4.7).
 
@@ -312,6 +313,9 @@ For each scenario, show:
    scenarios (which are deleted too) and saved sweeps (see §9.7).
 1. Scenarios can be reordered. Each scenario records when it was created, so
    reordering never changes which one is the "earliest-created" (§10.1).
+   Scenarios created together (e.g. by Generate grid or "Show me") get
+   increasing creation times in the order they're created. Any remaining tie,
+   which only an imported file can have, goes to the lower id.
 
 ### 8.1 Visibility & tag filters
 
@@ -421,7 +425,13 @@ For each scenario, show:
      they were entered when the preview additions change.
    - The range is automatic: 15 CR points beyond the outermost thresholds, or
      for currency terms half the span from the outermost loss threshold to
-     the outermost gain threshold (including break-even) on each side.
+     the outermost gain threshold (including break-even) on each side. If
+     every threshold is at break-even, the currency range is ±10% of the
+     preview additions.
+   - A gain can't exceed the additions (deductions are never negative), so
+     the currency range stops at a gain equal to the preview additions. Gain
+     thresholds beyond that don't set the range, and the chart's summary
+     says they can't be reached with this preview.
 1. **Scenarios compared** (bar): settlement per visible scenario.
 1. **Net position per party** (grouped bar): both parties' net positions
    for each visible scenario.

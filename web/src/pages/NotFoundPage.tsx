@@ -5,8 +5,8 @@ import { Page } from './Page'
 export function NotFoundPage() {
   return (
     <Page title="Page not found">
-      <Link component={RouterLink} to="/terms">
-        Go to Terms
+      <Link component={RouterLink} to="/">
+        Go to the start page
       </Link>
     </Page>
   )

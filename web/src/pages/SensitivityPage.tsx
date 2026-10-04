@@ -1,4 +1,5 @@
-import { ComingSoon, Page } from './Page'
+import { ComingSoon } from '../components/ComingSoon'
+import { Page } from './Page'
 
 export function SensitivityPage() {
   return (

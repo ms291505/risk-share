@@ -7,8 +7,8 @@ describe('niceTicks', () => {
   })
 
   it('stays bounded for huge ranges', () => {
-    // A $100,000 currency threshold previewed with $1,000 of additions spans ~10,000 CR points.
-    const { ticks } = niceTicks(-9915, 115)
+    // E.g. a currency curve across hundreds of millions.
+    const { ticks } = niceTicks(-250_000_000, 730_000_000)
     expect(ticks.length).toBeLessThanOrEqual(12)
   })
 

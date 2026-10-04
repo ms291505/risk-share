@@ -27,8 +27,8 @@ export interface Scenario {
   /** Markdown. */
   notes: string
   /**
-   * ISO 8601 timestamp. Decides the "earliest-created scenario" (§10.1), so
-   * reordering scenarios never changes it.
+   * ISO 8601 timestamp, from `nextCreatedAt`. Decides the "earliest-created
+   * scenario" (§10.1), so reordering scenarios never changes it (§8.7).
    */
   createdAt: string
 }
@@ -87,4 +87,20 @@ export function emptyWorkspace(locale: string = navigator.language): Workspace {
 /** True until the user adds terms, amount sets or scenarios. */
 export function isEmptyWorkspace(w: Workspace): boolean {
   return w.terms.length === 0 && w.amountSets.length === 0 && w.scenarios.length === 0
+}
+
+/**
+ * The creation time for a new scenario: now, but always later than every
+ * existing scenario, so scenarios created together (Generate grid, "Show me",
+ * duplicate) keep their creation order (§8.7). When creating several, add each
+ * one before asking for the next.
+ */
+export function nextCreatedAt(scenarios: Pick<Scenario, 'createdAt'>[], now: Date = new Date()): string {
+  const latest = Math.max(-Infinity, ...scenarios.map((s) => Date.parse(s.createdAt)))
+  return new Date(Math.max(now.getTime(), latest + 1)).toISOString()
+}
+
+/** Creation order (§8.7): by `createdAt`, then by `id` for ties, which only imported files can have. */
+export function compareCreated(a: Pick<Scenario, 'createdAt' | 'id'>, b: Pick<Scenario, 'createdAt' | 'id'>): number {
+  return Date.parse(a.createdAt) - Date.parse(b.createdAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 }
