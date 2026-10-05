@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { graphemes } from '../format/graphemes'
 import { fitText } from './fitText'
 
 // 10px per character.
-const measure = (s: string) => [...s].length * 10
+const measure = (s: string) => graphemes(s).length * 10
 
 describe('fitText', () => {
   it('leaves text that fits', () => {
@@ -16,6 +17,8 @@ describe('fitText', () => {
   it("doesn't split an emoji or leave a space before the ellipsis", () => {
     expect(fitText('ab 😀😀😀', 40, measure)).toBe('ab…')
     expect(fitText('ab😀😀😀', 40, measure)).toBe('ab😀…')
+    expect(fitText('ab🇺🇸🇺🇸🇺🇸', 40, measure)).toBe('ab🇺🇸…')
+    expect(fitText('ab👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧', 40, measure)).toBe('ab👨‍👩‍👧…')
   })
 
   it('leaves text alone when it cannot be measured', () => {

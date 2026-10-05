@@ -1,3 +1,5 @@
+import { graphemes } from '../format/graphemes'
+
 /** Text width in px, or null where canvas text metrics aren't available (e.g. jsdom). */
 export type MeasureText = (text: string) => number | null
 
@@ -21,8 +23,8 @@ export function canvasMeasure(font: string): MeasureText {
 export function fitText(text: string, maxWidth: number, measure: MeasureText): string {
   const width = measure(text)
   if (width === null || width <= maxWidth) return text
-  // Code points, so an emoji is never split.
-  const chars = [...text]
+  // Graphemes, so an emoji (even 👨‍👩‍👧 or 🇺🇸) is never split.
+  const chars = graphemes(text)
   let lo = 0
   let hi = chars.length - 1
   while (lo < hi) {

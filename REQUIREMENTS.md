@@ -66,10 +66,9 @@
 1. Users can name both parties. Results always show direction clearly
    (who pays whom).
 1. Party names are trimmed of leading/trailing spaces, must be non-empty, are
-   at most 80 characters (an emoji counts as one), and must differ from each
-   other (ignoring case).
-   Invalid names are saved and remain editable, with inline errors (as in
-   §4.7).
+   at most 80 characters (counting each emoji, even a combined one like a
+   flag, as one), and must differ from each other (ignoring case). Invalid
+   names are saved and remain editable, with inline errors (as in §4.7).
 
 ## 4. Amounts (additions & deductions)
 
@@ -428,8 +427,9 @@ For each scenario, show:
      the outermost gain threshold (including break-even) on each side. If
      every threshold is at break-even, the currency range is ±10% of the
      preview additions.
-   - A gain can't exceed the additions (deductions are never negative), so
-     the currency range stops at a gain equal to the preview additions. Gain
+   - Deductions are never negative, so the cost ratio range never goes below
+     0%, and a gain can't exceed the additions: the currency range stops at a
+     gain equal to the preview additions. Gain
      thresholds beyond that don't set the range, and the chart's summary
      says they can't be reached with this preview.
 1. **Scenarios compared** (bar): settlement per visible scenario.
@@ -454,8 +454,9 @@ For each scenario, show:
      offers to export the current workspace first.
    - Files from older schema versions are migrated, both on import and when
      loading from browser storage. Files from a newer version, or files that
-     fail validation, are rejected with an explanation, and the current
-     workspace is left unchanged.
+     fail validation (including any timestamp that isn't valid ISO 8601),
+     are rejected with an explanation, and the current workspace is left
+     unchanged.
 1. No URL-based sharing. Data never leaves the browser except through files the
    user exports.
 1. Results export:

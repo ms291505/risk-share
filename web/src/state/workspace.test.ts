@@ -18,6 +18,10 @@ describe('scenario creation order (§8.7)', () => {
     ])
   })
 
+  it("doesn't throw on an unreadable timestamp", () => {
+    expect(nextCreatedAt([{ createdAt: 'yesterday' }], now)).toBe('2026-10-04T12:00:00.000Z')
+  })
+
   it('sorts by creation time, then id', () => {
     const t = '2026-10-04T12:00:00.000Z'
     const list = [

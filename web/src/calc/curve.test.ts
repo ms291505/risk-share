@@ -25,6 +25,16 @@ describe('settlementCurve (§10.1)', () => {
     expect(c.points.at(-1)!.x.toString()).toBe('99.9999')
   })
 
+  it('starts at 0% at the lowest, since deductions are never negative', () => {
+    const low = terms('gain', { gain: side([['10.0', '50']]) })
+    const c = expectOk(settlementCurve(low, D(1000000), USD))
+    expect([c.points[0].x.toString(), c.points.at(-1)!.x.toString()]).toEqual(['0', '25'])
+    expect(settlementCurve(low, D(1000000), USD, { from: D(-5), to: D(20) })).toMatchObject({
+      ok: false,
+      issues: [{ code: 'rangeBelowZero' }],
+    })
+  })
+
   it('rejects a reversed range', () => {
     const t = terms('gain', { gain: side([['85.0', '100']]) })
     expect(settlementCurve(t, D(1000000), USD, { from: D(90), to: D(80) })).toMatchObject({

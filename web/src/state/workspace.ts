@@ -29,6 +29,7 @@ export interface Scenario {
   /**
    * ISO 8601 timestamp, from `nextCreatedAt`. Decides the "earliest-created
    * scenario" (§10.1), so reordering scenarios never changes it (§8.7).
+   * Import validation must reject a value `Date.parse` can't read (§11.2).
    */
   createdAt: string
 }
@@ -96,7 +97,9 @@ export function isEmptyWorkspace(w: Workspace): boolean {
  * one before asking for the next.
  */
 export function nextCreatedAt(scenarios: Pick<Scenario, 'createdAt'>[], now: Date = new Date()): string {
-  const latest = Math.max(-Infinity, ...scenarios.map((s) => Date.parse(s.createdAt)))
+  // Skips unreadable timestamps rather than throwing; import validation rejects them (§11.2).
+  const times = scenarios.map((s) => Date.parse(s.createdAt)).filter(Number.isFinite)
+  const latest = Math.max(-Infinity, ...times)
   return new Date(Math.max(now.getTime(), latest + 1)).toISOString()
 }
 

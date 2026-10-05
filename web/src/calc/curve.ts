@@ -61,10 +61,14 @@ function grid(from: Big, to: Big, step: Big): Big[] {
   return xs
 }
 
-/** CR axis: points on the terms' precision grid, so the staircase from rounding shows exactly. */
+/**
+ * CR axis: points on the terms' precision grid, so the staircase from rounding
+ * shows exactly. CR can't go below 0% (deductions are never negative, §4), so
+ * neither can the range.
+ */
 function crGrid(terms: Terms, xs: Big[], range?: { from: Big; to: Big }): Big[] {
   const unit = D(`1e-${terms.crPrecision}`)
-  const lo = range?.from ?? xs.reduce(minBig).minus(CR_MARGIN)
+  const lo = range?.from ?? maxBig(ZERO, xs.reduce(minBig).minus(CR_MARGIN))
   const hi = range?.to ?? xs.reduce(maxBig).plus(CR_MARGIN)
   // Snap outward to the grid, and coarsen the step to cap the point count
   // (leaving room for an off-grid end point).
@@ -128,6 +132,9 @@ export function settlementCurve(
   const issues = validateTerms(terms, ctx.minorUnits)
   if (additions.lte(0)) issues.push({ code: 'additionsNotPositive', path: ['additions'] })
   if (range && range.from.gt(range.to)) issues.push({ code: 'invalidRange', path: ['range'] })
+  if (range && terms.unit === 'costRatio' && range.from.lt(0)) {
+    issues.push({ code: 'rangeBelowZero', path: ['range'] })
+  }
   if (range && terms.unit === 'currency' && range.to.gt(additions)) {
     issues.push({ code: 'rangeAboveAdditions', path: ['range'] })
   }

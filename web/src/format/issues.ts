@@ -23,6 +23,7 @@ const MESSAGES: Record<IssueCode, string | ((p: NonNullable<Params>) => string)>
   noTerms: 'Pick at least one set of terms.',
   invalidStep: 'Step must be greater than zero.',
   invalidRange: 'The range start must not be after its end.',
+  rangeBelowZero: "The range can't include a cost ratio below 0%.",
   rangeAboveAdditions: "The range can't include gains larger than the additions.",
   nameEmpty: 'Enter a name.',
   nameTooLong: (p) => `Use at most ${p.max} characters.`,

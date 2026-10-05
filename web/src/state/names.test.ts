@@ -10,8 +10,11 @@ describe('names (§3.3, §8.2)', () => {
     ])
   })
 
-  it('counts an emoji as one character', () => {
-    expect(nameIssues('😀'.repeat(MAX_NAME_LENGTH), ['x'])).toEqual([])
+  it('counts an emoji as one character, even a combined one', () => {
+    for (const emoji of ['😀', '👨‍👩‍👧', '👍🏽', '🇺🇸']) {
+      expect(nameIssues(emoji.repeat(MAX_NAME_LENGTH), ['x'])).toEqual([])
+      expect(nameIssues(emoji.repeat(MAX_NAME_LENGTH + 1), ['x'])[0].code).toBe('nameTooLong')
+    }
   })
 
   it('compares ignoring case and surrounding spaces', () => {

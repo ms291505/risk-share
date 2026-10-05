@@ -34,11 +34,15 @@ src/
 - **New view:** render it inside `Page` (`pages/Page.tsx`). It provides the one
   h1, the unique document title and the focus target after navigation (§13.6).
   Add the route in `app/routes.tsx` and the nav entry in `NAV` in
-  `app/AppShell.tsx`.
+  `app/AppShell.tsx`. Focus moves only when the first path segment changes,
+  and never on `navigate(path, { replace: true })`, which is treated as a
+  redirect. If a replace navigation moves the user to a different view (e.g.
+  after deleting the open item), focus the new view's h1 yourself.
 - **Changing workspace data:** call `update(label, recipe)` from the store. The
   label is what undo/redo announces, so write it for users ("Rename
   counterparty"). `load()` replaces the workspace without an undo step; use it
-  only for storage, import and migration, never for user edits.
+  only for loading from browser storage and for migration. Import and "Show
+  me" are undoable (§12.3): use `update(label, () => newWorkspace)`.
 - **Text inputs:** use `CommitTextField`, so each edit is one undo step,
   committed on blur or Enter (§12.5).
 - **Validation:** return calc-style `Issue`s (`calc/types.ts`) and add the
