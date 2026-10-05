@@ -25,7 +25,8 @@
    "unsupported browser" notice but are not blocked. The notice is based on
    feature detection, not the user agent: exact amount formatting needs
    `Intl.NumberFormat` to format decimal strings without converting them to
-   floating point.
+   floating point, and counting characters in names (§3.3) needs
+   `Intl.Segmenter`.
 1. **Landing view.** With an empty workspace (no terms, amount sets, or
    scenarios), the app opens on a welcome view offering "Show me" (§1.4),
    "Start from a template" (§6.7), and "Import a workspace" (§11.2).
