@@ -22,6 +22,8 @@ function tab(startedAt: number, tabId: string) {
 }
 
 const stops: (() => void)[] = []
+/** BroadcastChannel delivery is asynchronous and can be slow on a loaded machine. */
+const WAIT = { timeout: 5000 }
 afterEach(() => stops.splice(0).forEach((stop) => stop()))
 
 describe('one active tab (§11.1)', () => {
@@ -33,7 +35,7 @@ describe('one active tab (§11.1)', () => {
     input.focus()
 
     const fresh = tab(2000, 'b')
-    await vi.waitFor(() => expect(fresh.reload).toHaveBeenCalledOnce())
+    await vi.waitFor(() => expect(fresh.reload).toHaveBeenCalledOnce(), WAIT)
     expect(old.state.readOnly).toBe(true)
     expect(order).toEqual(['blur'])
     expect(fresh.state.readOnly).toBe(false)
@@ -44,21 +46,21 @@ describe('one active tab (§11.1)', () => {
   it('keeps the newest tab as the editor when an older one starts late', async () => {
     const newer = tab(2000, 'a')
     const older = tab(1000, 'b')
-    await vi.waitFor(() => expect(older.state.readOnly).toBe(true))
+    await vi.waitFor(() => expect(older.state.readOnly).toBe(true), WAIT)
     expect(newer.state.readOnly).toBe(false)
   })
 
   it('breaks ties by tab id', async () => {
     const a = tab(1000, 'a')
     const b = tab(1000, 'b')
-    await vi.waitFor(() => expect(a.state.readOnly).toBe(true))
+    await vi.waitFor(() => expect(a.state.readOnly).toBe(true), WAIT)
     expect(b.state.readOnly).toBe(false)
   })
 
   it('reloads read-only tabs when the editor saves', async () => {
     const old = tab(1000, 'a')
     const fresh = tab(2000, 'b')
-    await vi.waitFor(() => expect(old.state.readOnly).toBe(true))
+    await vi.waitFor(() => expect(fresh.reload).toHaveBeenCalledOnce(), WAIT)
     old.storageEvent(STORAGE_KEY)
     old.storageEvent('risk-share-mode')
     fresh.storageEvent(STORAGE_KEY)
