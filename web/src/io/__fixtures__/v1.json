@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.1.0",
+  "settings": { "currency": "EUR", "locale": "de-DE" },
+  "parties": { "riskBearer": "Lisa", "counterparty": "Bob" },
+  "terms": [
+    {
+      "id": "t-full",
+      "name": "Full risk share 99% / 101%",
+      "unit": "costRatio",
+      "type": "full",
+      "crPrecision": 2,
+      "roundingMode": "halfEven",
+      "gain": {
+        "tiers": [
+          { "id": "g1", "name": "Gain tier 1", "threshold": "99.00", "sharePct": "50" },
+          { "id": "g2", "name": "Gain tier 2", "threshold": "90.00", "sharePct": "75.5" }
+        ],
+        "limits": {
+          "maxPayout": "250000.00",
+          "maxPayoutPctOfAdditions": "10",
+          "minimum": { "amount": "1000.00", "behavior": "deductible" }
+        }
+      },
+      "loss": {
+        "tiers": [{ "id": "l1", "name": "Loss tier 1", "threshold": "101.00", "sharePct": "30" }],
+        "limits": { "minimum": { "amount": "500.00", "behavior": "allOrNothing" } }
+      }
+    },
+    {
+      "id": "t-currency",
+      "name": "Gain share over €50,000",
+      "unit": "currency",
+      "type": "gain",
+      "crPrecision": 1,
+      "roundingMode": "truncate",
+      "gain": {
+        "tiers": [{ "id": "c1", "name": "Gain tier 1", "threshold": "50000.00", "sharePct": "100" }],
+        "limits": {}
+      },
+      "loss": {
+        "tiers": [{ "id": "c2", "name": "Kept but unused", "threshold": "1000.00", "sharePct": "20" }],
+        "limits": {}
+      }
+    },
+    {
+      "id": "t-blank",
+      "name": "New terms",
+      "unit": "costRatio",
+      "type": "loss",
+      "crPrecision": 1,
+      "roundingMode": "halfUp",
+      "loss": {
+        "tiers": [{ "id": "b1", "name": "Loss tier 1", "threshold": "", "sharePct": "abc" }],
+        "limits": {}
+      }
+    }
+  ],
+  "amountSets": [
+    {
+      "id": "a-components",
+      "name": "Q3 actuals",
+      "additions": {
+        "mode": "components",
+        "total": "0",
+        "components": [
+          { "id": "ac1", "name": "Premiums", "amount": "800000.00", "paidByCounterparty": true },
+          { "id": "ac2", "name": "Other revenue", "amount": "200000.00", "paidByCounterparty": false },
+          { "id": "ac3", "name": "Grants", "amount": "5000.00" }
+        ]
+      },
+      "deductions": {
+        "mode": "components",
+        "total": "0",
+        "components": [
+          { "id": "dc1", "name": "Claims", "amount": "900000.00" },
+          { "id": "dc2", "name": "Rebates", "amount": "-12500.50" }
+        ]
+      }
+    },
+    {
+      "id": "a-total",
+      "name": "Budget",
+      "additions": {
+        "mode": "total",
+        "total": "1000000.00",
+        "paidByCounterparty": "400000.00",
+        "components": [{ "id": "tc1", "name": "Inactive component", "amount": "1.00" }]
+      },
+      "deductions": { "mode": "total", "total": "950000.00", "components": [] }
+    },
+    {
+      "id": "a-new",
+      "name": "New amount set",
+      "additions": { "mode": "total", "total": "0", "components": [] },
+      "deductions": { "mode": "total", "total": "", "components": [] }
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "s1",
+      "name": "Actuals · full share",
+      "termsId": "t-full",
+      "amountSetId": "a-components",
+      "tagIds": ["tag-opt", "tag-board"],
+      "hidden": false,
+      "notes": "**Agreed** in the Q3 review.",
+      "createdAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "s2",
+      "name": "Budget · currency",
+      "termsId": "t-currency",
+      "amountSetId": "a-total",
+      "tagIds": [],
+      "hidden": true,
+      "notes": "",
+      "createdAt": "2026-10-01T09:00:00.000Z"
+    },
+    {
+      "id": "s0",
+      "name": "Blank",
+      "termsId": "t-blank",
+      "amountSetId": "a-new",
+      "tagIds": ["tag-opt"],
+      "hidden": false,
+      "notes": "",
+      "createdAt": "2026-10-01T11:00:00+02:00"
+    }
+  ],
+  "tags": [
+    { "id": "tag-opt", "name": "Optimistic" },
+    { "id": "tag-board", "name": "Board deck" },
+    { "id": "tag-unused", "name": "Unused" }
+  ],
+  "sweeps": [
+    {
+      "id": "w-component",
+      "name": "Claims sweep",
+      "baselineAmountSetId": "a-components",
+      "termsIds": ["t-full", "t-deleted"],
+      "spec": {
+        "kind": "variable",
+        "variable": { "kind": "component", "group": "deductions", "componentId": "dc1" },
+        "range": { "kind": "minMaxStep", "min": "800000", "max": "1000000", "step": "25000" }
+      }
+    },
+    {
+      "id": "w-pct",
+      "name": "Additions ±10%",
+      "baselineAmountSetId": "a-deleted",
+      "termsIds": ["t-currency"],
+      "spec": {
+        "kind": "variable",
+        "variable": { "kind": "additions" },
+        "range": { "kind": "pctAroundBaseline", "pct": "10", "stepPct": "2.5" }
+      }
+    },
+    {
+      "id": "w-cr",
+      "name": "Cost ratio 90–110%",
+      "baselineAmountSetId": "a-total",
+      "termsIds": [],
+      "spec": { "kind": "crRange", "from": "90", "to": "110", "step": "0.5" }
+    }
+  ],
+  "filterViews": [
+    { "id": "f1", "name": "Board deck", "showTagIds": ["tag-board"], "showMatch": "any", "hideTagIds": [] },
+    { "id": "f2", "name": "No optimism", "showTagIds": [], "showMatch": "all", "hideTagIds": ["tag-opt"] }
+  ],
+  "notes": "# Notes\n\nNegotiation with Bob, autumn 2026."
+}

@@ -3,7 +3,7 @@ import Button from '@mui/material/Button'
 import Container from '@mui/material/Container'
 import Stack from '@mui/material/Stack'
 import { useRouteError } from 'react-router'
-import { downloadWorkspace } from '../io/exportWorkspace'
+import { downloadWorkspace } from '../io/serialize'
 import { useWorkspaceStore } from '../state/store'
 import { Page } from './Page'
 
