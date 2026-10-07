@@ -443,23 +443,42 @@ For each scenario, show:
 
 1. Auto-save the workspace to browser storage (localStorage). Saved data
    survives a reload on the same browser and device.
+   - The app bar shows where the workspace is saved ("Saved in this
+     browser"). Its details say plainly that browser storage is temporary
+     (clearing browsing data, or a browser's automatic cleanup, erases it)
+     and that exporting to a file is the way to keep a workspace long term.
+     Exporting is the only durable copy; the app doesn't nag about
+     unexported changes (see Deferred).
+   - As a quiet safety net, the app asks the browser to keep its storage
+     (`navigator.storage.persist()`) once the workspace has content, except
+     in Firefox, where that shows a permission prompt.
    - If storage is full or unavailable, the app shows a persistent warning
      and prompts the user to export the workspace to a file.
    - **One active tab**: if the app is opened in another tab on the same
      browser, the newest tab becomes the editor. Older tabs save any
      pending edits first, then go read-only and
      show a "Reload to edit" banner, so tabs never overwrite each other.
+     In a read-only tab, fields can't be edited and undo/redo and import
+     are unavailable; it follows the editor's saved changes.
 1. Export and import the whole workspace as a JSON file, including notes,
-   tags, saved sweeps, and filter views. The file includes a schema version.
+   tags, saved sweeps, and filter views. The file includes a schema version
+   and the version of the app that wrote it. Cmd/Ctrl+S exports.
    - Importing replaces the current workspace after a confirmation, which
      offers to export the current workspace first.
    - Files from older schema versions are migrated, both on import and when
      loading from browser storage. Files from a newer version, or files that
      fail validation (including any timestamp that isn't valid ISO 8601),
      are rejected with an explanation, and the current workspace is left
-     unchanged.
+     unchanged. A file from a newer version names the app version it needs.
+   - Before a workspace in browser storage is migrated, the original is kept
+     as a backup that can be downloaded. If the backup can't be written, the
+     original isn't overwritten.
+   - A workspace in browser storage that is newer, corrupt, or invalid is
+     never overwritten automatically. The app explains why it can't be
+     opened and offers to download it; replacing it needs confirmation.
 1. No URL-based sharing. Data never leaves the browser except through files the
-   user exports.
+   user exports. A Content Security Policy blocks all network requests
+   (`connect-src 'none'`), so not even a dependency can send data anywhere.
 1. Results export:
    - CSV of specific results (a scenario comparison table or sweep table),
      using `.` as the decimal separator and no grouping separators, whatever
@@ -509,3 +528,11 @@ For each scenario, show:
    in the operating system's dark and high-contrast (forced colors) modes.
 1. **Navigation**: each view has a unique document title, and moving to a
    new view moves focus to its main heading.
+
+## Deferred
+
+Not in scope for now; recorded so the decision isn't lost.
+
+1. **Unexported-changes reminder.** A nudge to export when the workspace has
+   changed since the last export. Deferred to avoid nagging; export is kept
+   easy and visible instead (§11.1).
