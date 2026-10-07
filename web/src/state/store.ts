@@ -41,7 +41,7 @@ export interface WorkspaceState {
   redo(): string | null
 }
 
-// Persistence and the single-active-tab lock (§11.1) will hook in via useWorkspaceStore.subscribe.
+// Saved to browser storage by io/persistence.ts, which subscribes to changes (§11.1).
 export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   workspace: emptyWorkspace(),
   past: [],
