@@ -29,8 +29,11 @@ import { NavLink, Outlet, useLocation, useNavigationType } from 'react-router'
 import { ComingSoonButton } from '../components/ComingSoonButton'
 import { IconMenu } from '../components/IconMenu'
 import { isSupportedBrowser } from '../format/browserSupport'
-import { downloadWorkspace } from '../io/serialize'
 import { useWorkspaceStore } from '../state/store'
+import { useImportWorkspace } from './useImportWorkspace'
+import { StorageAlert, StorageStatusButton } from './StorageStatus'
+import { useExportWorkspace } from './useExportWorkspace'
+import { useSaveShortcut } from './useSaveShortcut'
 import { useUndoRedo } from './useUndoRedo'
 import { useUndoShortcuts } from './useUndoShortcuts'
 
@@ -53,6 +56,8 @@ export function AppShell() {
   const undoRedo = useUndoRedo()
   // Registered here rather than in the buttons, so restyling the toolbar can't drop the shortcuts.
   useUndoShortcuts(undoRedo.undo, undoRedo.redo)
+  const exportWorkspace = useExportWorkspace()
+  useSaveShortcut(exportWorkspace)
   useFocusHeadingOnNavigate()
 
   return (
@@ -63,11 +68,12 @@ export function AppShell() {
           <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
             Risk Share
           </Typography>
+          <StorageStatusButton compact={compact} />
           <UndoRedoButtons {...undoRedo} />
           <ComingSoonButton color="inherit" reason="Load a worked example and take a short tour (coming soon)">
             Show me
           </ComingSoonButton>
-          <ImportExportMenu />
+          <ImportExportMenu onExport={exportWorkspace} />
           <ColorSchemeMenu />
         </Toolbar>
       </AppBar>
@@ -106,6 +112,7 @@ export function AppShell() {
       >
         <Toolbar />
         <ReadOnlyBanner />
+        <StorageAlert />
         <UnsupportedBrowserNotice />
         <Outlet />
       </Box>
@@ -207,24 +214,36 @@ function UndoRedoButtons(props: { undo(): void; redo(): void; canUndo: boolean; 
   )
 }
 
-function ImportExportMenu() {
+function ImportExportMenu({ onExport }: { onExport(): unknown }) {
+  const importWorkspace = useImportWorkspace()
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
   return (
-    <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
-      {(close) => [
-        <MenuItem key="import" disabled>
-          Import workspace… (coming soon)
-        </MenuItem>,
-        <MenuItem
-          key="export"
-          onClick={() => {
-            downloadWorkspace(useWorkspaceStore.getState().workspace)
-            close()
-          }}
-        >
-          Export workspace
-        </MenuItem>,
-      ]}
-    </IconMenu>
+    <>
+      <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
+        {(close) => [
+          <MenuItem
+            key="import"
+            disabled={readOnly}
+            onClick={() => {
+              close()
+              importWorkspace.pick()
+            }}
+          >
+            Import workspace…
+          </MenuItem>,
+          <MenuItem
+            key="export"
+            onClick={() => {
+              close()
+              onExport()
+            }}
+          >
+            Export workspace
+          </MenuItem>,
+        ]}
+      </IconMenu>
+      {importWorkspace.ui}
+    </>
   )
 }
 

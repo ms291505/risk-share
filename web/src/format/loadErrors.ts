@@ -1,6 +1,12 @@
 import type { LoadError } from '../io/parse'
 import type { Expected, LoadProblem, Place } from '../io/validate'
 
+/** Larger files aren't read, so a wrong pick can't freeze the page. */
+export const MAX_IMPORT_BYTES = 10 * 1024 * 1024
+
+/** Why an import failed: the file couldn't be read, or its contents couldn't be loaded. */
+export type ImportError = LoadError | { kind: 'tooLarge' } | { kind: 'unreadable' }
+
 /** At most this many problems are listed; the rest are counted. */
 export const MAX_LISTED_PROBLEMS = 5
 
@@ -80,8 +86,15 @@ export function problemMessage(p: LoadProblem): string {
 }
 
 /** A heading and detail lines explaining why a workspace couldn't be opened (§11.2). */
-export function loadErrorMessage(error: LoadError): { title: string; details: string[] } {
+export function loadErrorMessage(error: ImportError): { title: string; details: string[] } {
   switch (error.kind) {
+    case 'tooLarge':
+      return {
+        title: "This file is too large to be a Risk Share workspace.",
+        details: [`Workspace files are at most ${MAX_IMPORT_BYTES / 1024 / 1024} MB.`],
+      }
+    case 'unreadable':
+      return { title: "This file couldn't be read.", details: ['Check that it still exists, then try again.'] }
     case 'notJson':
       return { title: "This file isn't a Risk Share workspace.", details: ["It isn't valid JSON."] }
     case 'notAWorkspace':

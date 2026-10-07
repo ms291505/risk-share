@@ -11,13 +11,16 @@ export function serializeWorkspace(workspace: Workspace, indent = 2): string {
   return JSON.stringify({ schemaVersion, appVersion: __APP_VERSION__, ...rest }, null, indent)
 }
 
-export function workspaceFileName(date: Date = new Date()): string {
-  return `risk-share-${date.toISOString().slice(0, 10)}.json`
+/** E.g. `risk-share-2026-10-07.json`, or `risk-share-backup-2026-10-07.json` with a label. */
+export function workspaceFileName(label?: string, date: Date = new Date()): string {
+  return `risk-share-${label ? `${label}-` : ''}${date.toISOString().slice(0, 10)}.json`
 }
 
-/** Downloads the whole workspace as a JSON file (§11.2). */
-export function downloadWorkspace(workspace: Workspace): void {
-  downloadText(serializeWorkspace(workspace), workspaceFileName())
+/** Downloads the whole workspace as a JSON file (§11.2). Returns the file name. */
+export function downloadWorkspace(workspace: Workspace): string {
+  const fileName = workspaceFileName()
+  downloadText(serializeWorkspace(workspace), fileName)
+  return fileName
 }
 
 /** Downloads text as a JSON file, e.g. a stored workspace the app can't open. */

@@ -2,11 +2,15 @@ import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
+import { useImportWorkspace } from '../app/useImportWorkspace'
 import { ComingSoonButton } from '../components/ComingSoonButton'
+import { useWorkspaceStore } from '../state/store'
 import { Page } from './Page'
 
 /** The landing view for an empty workspace (§1.2, §1.4). */
 export function WelcomePage() {
+  const importWorkspace = useImportWorkspace()
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
   return (
     <Page title="Welcome to Risk Share">
       <Typography sx={{ maxWidth: '60ch' }}>
@@ -20,10 +24,11 @@ export function WelcomePage() {
         <Button variant="outlined" component={RouterLink} to="/terms">
           Start from a template
         </Button>
-        <ComingSoonButton variant="outlined" reason="Import a workspace file (coming soon)">
+        <Button variant="outlined" onClick={importWorkspace.pick} disabled={readOnly}>
           Import a workspace
-        </ComingSoonButton>
+        </Button>
       </Stack>
+      {importWorkspace.ui}
     </Page>
   )
 }
