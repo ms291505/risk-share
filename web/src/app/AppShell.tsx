@@ -11,6 +11,7 @@ import UndoOutlined from '@mui/icons-material/UndoOutlined'
 import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
@@ -104,6 +105,7 @@ export function AppShell() {
         sx={{ flexGrow: 1, minWidth: 0, p: 3, '&:focus': { outline: 'none' } }}
       >
         <Toolbar />
+        <ReadOnlyBanner />
         <UnsupportedBrowserNotice />
         <Outlet />
       </Box>
@@ -151,6 +153,25 @@ function SkipLink() {
     >
       Skip to content
     </Box>
+  )
+}
+
+/** Shown while another tab is the editor (§11.1). Reloading makes this tab the newest, so the editor. */
+function ReadOnlyBanner() {
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
+  if (!readOnly) return null
+  return (
+    <Alert
+      severity="info"
+      sx={{ mb: 2 }}
+      action={
+        <Button color="inherit" size="small" onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      }
+    >
+      This workspace is open in another tab. Reload to edit it here.
+    </Alert>
   )
 }
 
