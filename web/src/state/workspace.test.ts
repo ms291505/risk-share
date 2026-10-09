@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareCreated, nextCreatedAt } from './workspace'
+import { compareCreated, emptyWorkspace, isUntouchedWorkspace, nextCreatedAt, type Workspace } from './workspace'
 
 describe('scenario creation order (§8.7)', () => {
   const now = new Date('2026-10-04T12:00:00.000Z')
@@ -30,5 +30,25 @@ describe('scenario creation order (§8.7)', () => {
       { id: 'a', createdAt: t },
     ]
     expect(list.sort(compareCreated).map((s) => s.id)).toEqual(['c', 'a', 'b'])
+  })
+})
+
+describe('isUntouchedWorkspace', () => {
+  const fresh = emptyWorkspace('en-US')
+
+  it('is true for a new workspace', () => {
+    expect(isUntouchedWorkspace(emptyWorkspace('en-US'), fresh)).toBe(true)
+  })
+
+  it.each<[string, (w: Workspace) => void]>([
+    ['notes', (w) => void (w.notes = 'x')],
+    ['a tag', (w) => void w.tags.push({ id: 't', name: 'x' })],
+    ['a party name', (w) => void (w.parties.counterparty = 'Bob')],
+    ['the currency', (w) => void (w.settings.currency = 'EUR')],
+    ['the locale', (w) => void (w.settings.locale = 'de-DE')],
+  ])('is false after changing %s', (_, change) => {
+    const w = emptyWorkspace('en-US')
+    change(w)
+    expect(isUntouchedWorkspace(w, fresh)).toBe(false)
   })
 })

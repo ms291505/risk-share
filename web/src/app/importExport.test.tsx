@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { templateTerms } from '../calc'
-import { usePersistence } from '../io/persistence'
+import { startPersistence, STORAGE_KEY, usePersistence } from '../io/persistence'
 import { serializeWorkspace } from '../io/serialize'
 import { useWorkspaceStore } from '../state/store'
 import { emptyWorkspace, type Workspace } from '../state/workspace'
@@ -64,6 +64,8 @@ describe('import (§11.2)', () => {
     expect(dialog.textContent).toContain('It needs Risk Share 9.0.0 or later')
     expect(dialog.textContent).toContain("Your workspace hasn't changed.")
     fireEvent.click(screen.getByRole('button', { name: 'OK' }))
+    // Still readable while it fades out.
+    expect(dialog.textContent).toContain('This workspace was saved by a newer version of Risk Share.')
     expect(store.getState().workspace.terms[0].name).toBe('Mine')
     expect(store.getState().past).toEqual([])
   })
@@ -103,14 +105,36 @@ describe('import (§11.2)', () => {
   it('cancelling keeps the workspace', async () => {
     store.getState().load(withTerms('Mine'))
     renderAt('/workspace')
-    await importFile(serializeWorkspace(withTerms('Theirs')))
+    await importFile(serializeWorkspace(withTerms('Theirs')), 'theirs.json')
+    const dialog = screen.getByRole('dialog', { name: 'Replace your workspace?' })
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(dialog.textContent).toContain('replaced by theirs.json (1 set of terms)')
     expect(store.getState().workspace.terms[0].name).toBe('Mine')
+  })
+
+  it('asks before replacing a workspace that has only notes', async () => {
+    store.getState().load({ ...emptyWorkspace('en-US'), notes: 'Call Bob' })
+    renderAt('/')
+    await importFile(serializeWorkspace(withTerms('Theirs')))
+    expect(screen.getByRole('dialog', { name: 'Replace your workspace?' })).toBeDefined()
+  })
+
+  it('explains, and changes nothing, if another tab became the editor before Replace', async () => {
+    store.getState().load(withTerms('Mine'))
+    const router = renderAt('/workspace')
+    await importFile(serializeWorkspace(withTerms('Theirs')))
+    act(() => store.getState().setReadOnly(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Replace' }))
+    expect(screen.getByRole('alertdialog').textContent).toContain('This workspace is now open in another tab.')
+    expect(store.getState().workspace.terms[0].name).toBe('Mine')
+    expect(router.state.location.pathname).toBe('/workspace')
   })
 
   it('replaces an empty workspace without asking', async () => {
     renderAt('/')
     expect(screen.getAllByRole('button', { name: 'Import a workspace' })).toHaveLength(1)
+    // The welcome view and the app bar menu share one file input and one set of dialogs.
+    expect(document.querySelectorAll('input[type=file]')).toHaveLength(1)
     await importFile(serializeWorkspace(withTerms('Theirs')))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(store.getState().workspace.terms[0].name).toBe('Theirs')
@@ -137,6 +161,13 @@ describe('export', () => {
     expect(downloads).toHaveLength(1)
     expect(document.activeElement).toBe(counterparty)
     expect(screen.getByRole('status').textContent).toBe('Exported the workspace to a file.')
+  })
+
+  it('exports once while Cmd/Ctrl+S is held', () => {
+    renderAt('/workspace')
+    fireEvent.keyDown(document.body, { key: 's', metaKey: true })
+    fireEvent.keyDown(document.body, { key: 's', metaKey: true, repeat: true })
+    expect(downloads).toHaveLength(1)
   })
 })
 
@@ -166,5 +197,34 @@ describe('storage status (§11.1)', () => {
     expect(alert.textContent).toContain("It isn't valid JSON.")
     fireEvent.click(screen.getByRole('button', { name: 'Replace saved copy…' }))
     expect(screen.getByRole('dialog', { name: 'Replace the saved workspace?' })).toBeDefined()
+  })
+
+  it('confirms replacing the stored copy and moves focus to the page heading', async () => {
+    localStorage.setItem(STORAGE_KEY, '{"schemaVer')
+    const { stop } = startPersistence(() => localStorage, store)
+    try {
+      renderAt('/workspace')
+      fireEvent.click(screen.getByRole('button', { name: 'Replace saved copy…' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Replace' }))
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(localStorage.getItem(STORAGE_KEY)).toBe(serializeWorkspace(store.getState().workspace, 0))
+      await waitFor(() =>
+        expect(screen.getByRole('status').textContent).toBe(
+          'Replaced the saved workspace. Changes are being saved again.',
+        ),
+      )
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
+    } finally {
+      stop()
+      localStorage.clear()
+    }
+  })
+
+  it("doesn't offer to replace the stored copy from a read-only tab", () => {
+    usePersistence.setState({ status: 'blocked', blockedBy: { kind: 'notJson' } })
+    store.getState().setReadOnly(true)
+    renderAt('/workspace')
+    expect(screen.getByRole('button', { name: 'Download saved copy' })).toBeDefined()
+    expect(screen.queryByRole('button', { name: 'Replace saved copy…' })).toBeNull()
   })
 })

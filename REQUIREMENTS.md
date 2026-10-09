@@ -459,12 +459,16 @@ For each scenario, show:
      pending edits first, then go read-only and
      show a "Reload to edit" banner, so tabs never overwrite each other.
      In a read-only tab, fields can't be edited and undo/redo and import
-     are unavailable; it follows the editor's saved changes.
+     are unavailable; it follows the editor's saved changes. A tab that was
+     asleep (frozen, or restored from the back/forward cache) checks again
+     when it's shown; if a newer tab is the editor, it goes read-only and
+     discards any unsaved edit rather than overwrite the newer tab's work.
 1. Export and import the whole workspace as a JSON file, including notes,
    tags, saved sweeps, and filter views. The file includes a schema version
    and the version of the app that wrote it. Cmd/Ctrl+S exports.
-   - Importing replaces the current workspace after a confirmation, which
-     offers to export the current workspace first.
+   - Importing replaces the current workspace. Unless nothing has been
+     entered or changed in it (including notes, tags, party names and
+     settings), a confirmation first offers to export it.
    - Files from older schema versions are migrated, both on import and when
      loading from browser storage. Files from a newer version, or files that
      fail validation (including any timestamp that isn't valid ISO 8601),

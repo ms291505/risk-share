@@ -13,10 +13,13 @@ import Popover from '@mui/material/Popover'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { loadErrorMessage } from '../format/loadErrors'
+import type { LoadError } from '../io/parse'
 import { persistence, usePersistence, type StorageStatus } from '../io/persistence'
 import { downloadText, workspaceFileName } from '../io/serialize'
+import { useWorkspaceStore } from '../state/store'
+import { useAnnounce } from './announcer'
 import { useExportWorkspace } from './useExportWorkspace'
 
 const LABELS: Record<StorageStatus, string> = {
@@ -119,14 +122,27 @@ export function StorageStatusButton({ compact }: { compact: boolean }) {
 /** A persistent warning while changes aren't being saved (§11.1). */
 export function StorageAlert() {
   const { status, blockedBy } = usePersistence()
-  const exportWorkspace = useExportWorkspace()
   const [confirming, setConfirming] = useState(false)
+  return (
+    <>
+      {status === 'blocked' && blockedBy ? (
+        <BlockedAlert reason={blockedBy} onReplace={() => setConfirming(true)} />
+      ) : (
+        <NotSavingAlert status={status} />
+      )}
+      {/* Outside the alert, which disappears as soon as the saved copy is replaced. */}
+      <ReplaceSavedCopyDialog open={confirming} onClose={() => setConfirming(false)} />
+    </>
+  )
+}
+
+function NotSavingAlert({ status }: { status: StorageStatus }) {
+  const exportWorkspace = useExportWorkspace()
   const exportAction = (
     <Button color="inherit" size="small" onClick={() => void exportWorkspace()}>
       Export
     </Button>
   )
-
   if (status === 'full') {
     return (
       <Alert severity="warning" sx={{ mb: 2 }} action={exportAction}>
@@ -142,13 +158,18 @@ export function StorageAlert() {
       </Alert>
     )
   }
-  if (status !== 'blocked' || !blockedBy) return null
-  const reason = loadErrorMessage(blockedBy)
+  return null
+}
+
+function BlockedAlert({ reason, onReplace }: { reason: LoadError; onReplace(): void }) {
+  // Only the editor tab may write (§11.1).
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
+  const message = loadErrorMessage(reason)
   return (
     <Alert severity="error" sx={{ mb: 2 }}>
       <AlertTitle>The workspace saved in this browser can't be opened</AlertTitle>
-      <Typography variant="body2">{reason.title}</Typography>
-      {reason.details.map((d, i) => (
+      <Typography variant="body2">{message.title}</Typography>
+      {message.details.map((d, i) => (
         <Typography key={i} variant="body2">
           {d}
         </Typography>
@@ -160,24 +181,42 @@ export function StorageAlert() {
         <Button color="inherit" size="small" variant="outlined" onClick={downloadSavedCopy}>
           Download saved copy
         </Button>
-        <Button color="inherit" size="small" onClick={() => setConfirming(true)}>
-          Replace saved copy…
-        </Button>
+        {!readOnly && (
+          <Button color="inherit" size="small" onClick={onReplace}>
+            Replace saved copy…
+          </Button>
+        )}
       </Stack>
-      <ReplaceSavedCopyDialog open={confirming} onClose={() => setConfirming(false)} />
     </Alert>
   )
 }
 
 function ReplaceSavedCopyDialog({ open, onClose }: { open: boolean; onClose(): void }) {
   const titleId = useId()
+  const announce = useAnnounce()
+  const replaced = useRef(false)
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby={titleId}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      aria-labelledby={titleId}
+      slotProps={{
+        transition: {
+          onExited: () => {
+            if (!replaced.current) return
+            replaced.current = false
+            // The button that opened this dialog went away with the alert.
+            document.querySelector<HTMLElement>('main h1')?.focus()
+            announce('Replaced the saved workspace. Changes are being saved again.')
+          },
+        },
+      }}
+    >
       <DialogTitle id={titleId}>Replace the saved workspace?</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          The workspace saved in this browser will be overwritten by the one open here, and changes will be saved
-          again. This can't be undone, so download the saved copy first if you might need it.
+          The workspace saved in this browser will be overwritten by the one open here, and changes will be saved again.
+          This can't be undone, so download the saved copy first if you might need it.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
@@ -190,6 +229,7 @@ function ReplaceSavedCopyDialog({ open, onClose }: { open: boolean; onClose(): v
           variant="contained"
           onClick={() => {
             persistence()?.overwriteBlocked()
+            replaced.current = usePersistence.getState().status === 'ok'
             onClose()
           }}
         >

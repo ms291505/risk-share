@@ -4,8 +4,11 @@ import type { Expected, LoadProblem, Place } from '../io/validate'
 /** Larger files aren't read, so a wrong pick can't freeze the page. */
 export const MAX_IMPORT_BYTES = 10 * 1024 * 1024
 
-/** Why an import failed: the file couldn't be read, or its contents couldn't be loaded. */
-export type ImportError = LoadError | { kind: 'tooLarge' } | { kind: 'unreadable' }
+/**
+ * Why an import failed: the file couldn't be read, its contents couldn't be
+ * loaded, or another tab became the editor (§11.1).
+ */
+export type ImportError = LoadError | { kind: 'tooLarge' } | { kind: 'unreadable' } | { kind: 'readOnly' }
 
 /** At most this many problems are listed; the rest are counted. */
 export const MAX_LISTED_PROBLEMS = 5
@@ -95,6 +98,11 @@ export function loadErrorMessage(error: ImportError): { title: string; details: 
       }
     case 'unreadable':
       return { title: "This file couldn't be read.", details: ['Check that it still exists, then try again.'] }
+    case 'readOnly':
+      return {
+        title: 'This workspace is now open in another tab.',
+        details: ['Import it there, or reload this tab to edit it here and then import it.'],
+      }
     case 'notJson':
       return { title: "This file isn't a Risk Share workspace.", details: ["It isn't valid JSON."] }
     case 'notAWorkspace':

@@ -1,39 +1,41 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { MAX_IMPORT_BYTES, type ImportError } from '../format/loadErrors'
 import { parseWorkspaceText } from '../io/parse'
 import { useWorkspaceStore } from '../state/store'
-import { isEmptyWorkspace, type Workspace } from '../state/workspace'
+import { isUntouchedWorkspace, type Workspace } from '../state/workspace'
 import { useAnnounce } from './announcer'
 import { ImportErrorDialog } from './ImportErrorDialog'
+import { ImportWorkspaceContext } from './importWorkspace'
 import { landingPath } from './landing'
 import { ReplaceWorkspaceDialog } from './ReplaceWorkspaceDialog'
 
+const isReadOnly = () => useWorkspaceStore.getState().readOnly
+
 /**
- * Importing a workspace file (§11.2). `pick` opens the file picker; render
- * `ui` (the hidden input and the dialogs) next to whatever calls it. A file
- * that can't be opened is explained and changes nothing. A non-empty
- * workspace is replaced only after confirmation, as one undoable step.
+ * Importing a workspace file (§11.2), for `usePickWorkspaceFile`. Renders the
+ * hidden file input and the dialogs once for the whole app. A file that can't
+ * be opened is explained and changes nothing. A workspace with anything in it
+ * is replaced only after confirmation, as one undoable step.
  */
-export function useImportWorkspace(): { pick(): void; ui: ReactNode } {
+export function ImportWorkspaceProvider({ children }: { children: ReactNode }) {
   const input = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<ImportError | null>(null)
-  const [pending, setPending] = useState<{ workspace: Workspace; fileName: string } | null>(null)
+  const [pending, setPending] = useState<{ workspace: Workspace; source: string } | null>(null)
   const navigate = useNavigate()
   const announce = useAnnounce()
   /** Held until the dialog has closed: while it's open, the live region is hidden from screen readers. */
   const announceAfterClose = useRef<string | null>(null)
 
   function replace(workspace: Workspace, fileName: string) {
+    setPending(null)
+    // Another tab may have become the editor while the file was read or the dialog was open.
+    if (isReadOnly()) return setError({ kind: 'readOnly' })
     // Clearing the active tag filter (§8.1.7) goes here once filters exist.
     useWorkspaceStore.getState().update('Import workspace', () => workspace)
     navigate(landingPath(workspace))
-    if (pending) {
-      announceAfterClose.current = `Imported ${fileName}.`
-      setPending(null)
-    } else {
-      announce(`Imported ${fileName}.`)
-    }
+    if (pending) announceAfterClose.current = `Imported ${fileName}.`
+    else announce(`Imported ${fileName}.`)
   }
 
   async function open(file: File) {
@@ -46,12 +48,18 @@ export function useImportWorkspace(): { pick(): void; ui: ReactNode } {
     }
     const parsed = parseWorkspaceText(text)
     if (!parsed.ok) return setError(parsed.error)
-    if (isEmptyWorkspace(useWorkspaceStore.getState().workspace)) replace(parsed.workspace, file.name)
-    else setPending({ workspace: parsed.workspace, fileName: file.name })
+    if (isReadOnly()) return setError({ kind: 'readOnly' })
+    if (isUntouchedWorkspace(useWorkspaceStore.getState().workspace)) replace(parsed.workspace, file.name)
+    else setPending({ workspace: parsed.workspace, source: file.name })
   }
 
-  const ui = (
-    <>
+  const pick = useCallback(() => {
+    if (!isReadOnly()) input.current?.click()
+  }, [])
+
+  return (
+    <ImportWorkspaceContext value={pick}>
+      {children}
       <input
         ref={input}
         type="file"
@@ -65,22 +73,14 @@ export function useImportWorkspace(): { pick(): void; ui: ReactNode } {
       />
       <ImportErrorDialog error={error} onClose={() => setError(null)} />
       <ReplaceWorkspaceDialog
-        incoming={pending?.workspace ?? null}
-        source={pending?.fileName ?? ''}
-        onReplace={() => pending && replace(pending.workspace, pending.fileName)}
+        incoming={pending}
+        onReplace={() => pending && replace(pending.workspace, pending.source)}
         onCancel={() => setPending(null)}
         onExited={() => {
           if (announceAfterClose.current) announce(announceAfterClose.current)
           announceAfterClose.current = null
         }}
       />
-    </>
+    </ImportWorkspaceContext>
   )
-
-  return {
-    pick: () => {
-      if (!useWorkspaceStore.getState().readOnly) input.current?.click()
-    },
-    ui,
-  }
 }

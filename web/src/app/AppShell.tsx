@@ -30,7 +30,7 @@ import { ComingSoonButton } from '../components/ComingSoonButton'
 import { IconMenu } from '../components/IconMenu'
 import { isSupportedBrowser } from '../format/browserSupport'
 import { useWorkspaceStore } from '../state/store'
-import { useImportWorkspace } from './useImportWorkspace'
+import { usePickWorkspaceFile } from './importWorkspace'
 import { StorageAlert, StorageStatusButton } from './StorageStatus'
 import { useExportWorkspace } from './useExportWorkspace'
 import { useSaveShortcut } from './useSaveShortcut'
@@ -215,35 +215,32 @@ function UndoRedoButtons(props: { undo(): void; redo(): void; canUndo: boolean; 
 }
 
 function ImportExportMenu({ onExport }: { onExport(): unknown }) {
-  const importWorkspace = useImportWorkspace()
+  const pickWorkspaceFile = usePickWorkspaceFile()
   const readOnly = useWorkspaceStore((s) => s.readOnly)
   return (
-    <>
-      <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
-        {(close) => [
-          <MenuItem
-            key="import"
-            disabled={readOnly}
-            onClick={() => {
-              close()
-              importWorkspace.pick()
-            }}
-          >
-            Import workspace…
-          </MenuItem>,
-          <MenuItem
-            key="export"
-            onClick={() => {
-              close()
-              onExport()
-            }}
-          >
-            Export workspace
-          </MenuItem>,
-        ]}
-      </IconMenu>
-      {importWorkspace.ui}
-    </>
+    <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
+      {(close) => [
+        <MenuItem
+          key="import"
+          disabled={readOnly}
+          onClick={() => {
+            close()
+            pickWorkspaceFile()
+          }}
+        >
+          Import workspace…
+        </MenuItem>,
+        <MenuItem
+          key="export"
+          onClick={() => {
+            close()
+            onExport()
+          }}
+        >
+          Export workspace
+        </MenuItem>,
+      ]}
+    </IconMenu>
   )
 }
 
