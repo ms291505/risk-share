@@ -91,6 +91,25 @@ export function isEmptyWorkspace(w: Workspace): boolean {
 }
 
 /**
+ * True if nothing has been entered or changed since `fresh`, so replacing the
+ * workspace loses nothing (§11.2). Stricter than `isEmptyWorkspace`: notes,
+ * tags, party names and settings count too.
+ */
+export function isUntouchedWorkspace(w: Workspace, fresh: Workspace = emptyWorkspace()): boolean {
+  return (
+    isEmptyWorkspace(w) &&
+    w.tags.length === 0 &&
+    w.sweeps.length === 0 &&
+    w.filterViews.length === 0 &&
+    w.notes === fresh.notes &&
+    w.parties.riskBearer === fresh.parties.riskBearer &&
+    w.parties.counterparty === fresh.parties.counterparty &&
+    w.settings.currency === fresh.settings.currency &&
+    w.settings.locale === fresh.settings.locale
+  )
+}
+
+/**
  * The creation time for a new scenario: now, but always later than every
  * existing scenario, so scenarios created together (Generate grid, "Show me",
  * duplicate) keep their creation order (§8.7). When creating several, add each

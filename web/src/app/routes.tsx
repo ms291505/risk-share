@@ -8,12 +8,17 @@ import { SensitivityPage } from '../pages/SensitivityPage'
 import { TermsPage } from '../pages/TermsPage'
 import { WorkspacePage } from '../pages/WorkspacePage'
 import { AppShell } from './AppShell'
+import { ImportWorkspaceProvider } from './ImportWorkspaceProvider'
 
 /** Routes hold only navigation state, never workspace data (§11.3). */
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: <AppShell />,
+    element: (
+      <ImportWorkspaceProvider>
+        <AppShell />
+      </ImportWorkspaceProvider>
+    ),
     errorElement: <ErrorPage />,
     children: [
       { index: true, element: <HomePage /> },

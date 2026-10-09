@@ -54,6 +54,15 @@ describe('app shell', () => {
     expect(undo.disabled).toBe(false)
   })
 
+  it('shows a banner with Reload while another tab is the editor (§11.1)', () => {
+    renderAt('/workspace')
+    expect(screen.queryByText(/open in another tab/)).toBeNull()
+    act(() => useWorkspaceStore.getState().setReadOnly(true))
+    expect(screen.getByText('This workspace is open in another tab. Reload to edit it here.')).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeDefined()
+    act(() => useWorkspaceStore.getState().setReadOnly(false))
+  })
+
   it('shows the welcome view for an empty workspace (§1.7)', () => {
     renderAt('/')
     expect(screen.getByRole('heading', { level: 1, name: 'Welcome to Risk Share' })).toBeDefined()

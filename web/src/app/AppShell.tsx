@@ -11,6 +11,7 @@ import UndoOutlined from '@mui/icons-material/UndoOutlined'
 import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
 import List from '@mui/material/List'
@@ -28,8 +29,11 @@ import { NavLink, Outlet, useLocation, useNavigationType } from 'react-router'
 import { ComingSoonButton } from '../components/ComingSoonButton'
 import { IconMenu } from '../components/IconMenu'
 import { isSupportedBrowser } from '../format/browserSupport'
-import { downloadWorkspace } from '../io/exportWorkspace'
 import { useWorkspaceStore } from '../state/store'
+import { usePickWorkspaceFile } from './importWorkspace'
+import { StorageAlert, StorageStatusButton } from './StorageStatus'
+import { useExportWorkspace } from './useExportWorkspace'
+import { useSaveShortcut } from './useSaveShortcut'
 import { useUndoRedo } from './useUndoRedo'
 import { useUndoShortcuts } from './useUndoShortcuts'
 
@@ -52,6 +56,8 @@ export function AppShell() {
   const undoRedo = useUndoRedo()
   // Registered here rather than in the buttons, so restyling the toolbar can't drop the shortcuts.
   useUndoShortcuts(undoRedo.undo, undoRedo.redo)
+  const exportWorkspace = useExportWorkspace()
+  useSaveShortcut(exportWorkspace)
   useFocusHeadingOnNavigate()
 
   return (
@@ -62,11 +68,12 @@ export function AppShell() {
           <Typography variant="h6" component="span" sx={{ flexGrow: 1 }}>
             Risk Share
           </Typography>
+          <StorageStatusButton compact={compact} />
           <UndoRedoButtons {...undoRedo} />
           <ComingSoonButton color="inherit" reason="Load a worked example and take a short tour (coming soon)">
             Show me
           </ComingSoonButton>
-          <ImportExportMenu />
+          <ImportExportMenu onExport={exportWorkspace} />
           <ColorSchemeMenu />
         </Toolbar>
       </AppBar>
@@ -104,6 +111,8 @@ export function AppShell() {
         sx={{ flexGrow: 1, minWidth: 0, p: 3, '&:focus': { outline: 'none' } }}
       >
         <Toolbar />
+        <ReadOnlyBanner />
+        <StorageAlert />
         <UnsupportedBrowserNotice />
         <Outlet />
       </Box>
@@ -154,6 +163,25 @@ function SkipLink() {
   )
 }
 
+/** Shown while another tab is the editor (§11.1). Reloading makes this tab the newest, so the editor. */
+function ReadOnlyBanner() {
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
+  if (!readOnly) return null
+  return (
+    <Alert
+      severity="info"
+      sx={{ mb: 2 }}
+      action={
+        <Button color="inherit" size="small" onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      }
+    >
+      This workspace is open in another tab. Reload to edit it here.
+    </Alert>
+  )
+}
+
 function UnsupportedBrowserNotice() {
   const [show, setShow] = useState(() => !isSupportedBrowser())
   if (!show) return null
@@ -186,18 +214,27 @@ function UndoRedoButtons(props: { undo(): void; redo(): void; canUndo: boolean; 
   )
 }
 
-function ImportExportMenu() {
+function ImportExportMenu({ onExport }: { onExport(): unknown }) {
+  const pickWorkspaceFile = usePickWorkspaceFile()
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
   return (
     <IconMenu label="Import or export" icon={<ImportExportOutlined />} color="inherit">
       {(close) => [
-        <MenuItem key="import" disabled>
-          Import workspace… (coming soon)
+        <MenuItem
+          key="import"
+          disabled={readOnly}
+          onClick={() => {
+            close()
+            pickWorkspaceFile()
+          }}
+        >
+          Import workspace…
         </MenuItem>,
         <MenuItem
           key="export"
           onClick={() => {
-            downloadWorkspace(useWorkspaceStore.getState().workspace)
             close()
+            onExport()
           }}
         >
           Export workspace

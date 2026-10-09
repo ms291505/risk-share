@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useWorkspaceStore } from '../state/store'
 import { CommitTextField } from './CommitTextField'
 
 describe('CommitTextField (§12.5)', () => {
@@ -39,6 +40,15 @@ describe('CommitTextField (§12.5)', () => {
     fireEvent.change(input, { target: { value: 'Lisa' } })
     fireEvent.blur(input)
     expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('is read-only while another tab is the editor (§11.1)', () => {
+    const { input } = setup()
+    expect(input.readOnly).toBe(false)
+    act(() => useWorkspaceStore.getState().setReadOnly(true))
+    expect(input.readOnly).toBe(true)
+    act(() => useWorkspaceStore.getState().setReadOnly(false))
+    expect(input.readOnly).toBe(false)
   })
 
   it('shows external changes, e.g. from app undo', () => {

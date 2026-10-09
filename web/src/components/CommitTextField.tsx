@@ -1,5 +1,6 @@
 import TextField, { type TextFieldProps } from '@mui/material/TextField'
 import { useState } from 'react'
+import { useWorkspaceStore } from '../state/store'
 
 type CommitTextFieldProps = Omit<TextFieldProps, 'value' | 'onChange' | 'onBlur' | 'error' | 'helperText'> & {
   value: string
@@ -12,9 +13,10 @@ type CommitTextFieldProps = Omit<TextFieldProps, 'value' | 'onChange' | 'onBlur'
 /**
  * A text field that edits a local draft and commits it as one undo step.
  * While focused, Cmd/Ctrl+Z is the browser's in-field undo (§12.2). Escape
- * discards the draft.
+ * discards the draft. Read-only while another tab is the editor (§11.1).
  */
-export function CommitTextField({ value, onCommit, error, onKeyDown, ...props }: CommitTextFieldProps) {
+export function CommitTextField({ value, onCommit, error, onKeyDown, slotProps, ...props }: CommitTextFieldProps) {
+  const readOnly = useWorkspaceStore((s) => s.readOnly)
   // null when not editing, so external changes (e.g. app undo) show through.
   const [draft, setDraft] = useState<string | null>(null)
   const commit = () => {
@@ -24,6 +26,7 @@ export function CommitTextField({ value, onCommit, error, onKeyDown, ...props }:
   return (
     <TextField
       {...props}
+      slotProps={readOnly ? { ...slotProps, htmlInput: { ...slotProps?.htmlInput, readOnly: true } } : slotProps}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
