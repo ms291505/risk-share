@@ -3,7 +3,12 @@ import { STORAGE_KEY, type Persistence } from './persistence'
 
 const CHANNEL = 'risk-share'
 
-type Message = { type: 'claim'; startedAt: number; tabId: string } | { type: 'released'; to: string }
+type Message =
+  | { type: 'claim'; startedAt: number; tabId: string }
+  /** The reply to a newer tab's claim, with what the replying tab saved. */
+  | { type: 'released'; to: string; text: string | null }
+  /** The reply to an older tab's claim. */
+  | { type: 'editing'; startedAt: number; tabId: string }
 
 interface Tab {
   startedAt: number
@@ -17,9 +22,9 @@ function isNewer(a: Tab, b: Tab): boolean {
 
 interface Options {
   store: { getState(): Pick<WorkspaceState, 'readOnly' | 'setReadOnly'> }
-  persistence: Pick<Persistence, 'reload'>
+  persistence: Pick<Persistence, 'reload' | 'readStored'>
   channel?: BroadcastChannel
-  /** Receives `storage` events from other tabs. */
+  /** Receives `storage`, `pageshow` and `visibilitychange` events. */
   events?: Pick<Window, 'addEventListener' | 'removeEventListener'>
   now?: number
   tabId?: string
@@ -29,8 +34,14 @@ interface Options {
  * One active tab (§11.1): the newest tab is the editor. When a tab opens, it
  * claims the workspace. The editor commits any field being edited (by
  * blurring it, so `CommitTextField` saves its draft), goes read-only and
- * replies, and the new tab then reloads what it saved. Read-only tabs follow
- * later saves through `storage` events. Returns a function that stops it.
+ * replies with what it saved, which the new tab loads. Read-only tabs follow
+ * later saves through `storage` events.
+ *
+ * A tab that was frozen or in the back/forward cache may have missed a claim,
+ * so an editor claims again whenever it's shown. If a newer editor answers,
+ * this tab's view is stale: it goes read-only without committing the field
+ * being edited, so it can't overwrite the newer tab's work. Returns a
+ * function that stops it.
  */
 export function startTabLock({
   store,
@@ -43,33 +54,45 @@ export function startTabLock({
   if (!channel) return () => {}
   const me: Tab = { startedAt: now, tabId }
 
-  const claim = () => channel.postMessage({ type: 'claim', ...me } satisfies Message)
+  const post = (msg: Message) => channel.postMessage(msg)
+  const isEditor = () => !store.getState().readOnly
+  const claim = () => {
+    if (isEditor()) post({ type: 'claim', ...me })
+  }
 
   const onMessage = (e: MessageEvent<Message>) => {
     const msg = e.data
-    if (msg.type === 'claim' && !store.getState().readOnly) {
+    if (msg.type === 'claim' && isEditor()) {
       if (isNewer(msg, me)) {
         if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
         store.getState().setReadOnly(true)
-        channel.postMessage({ type: 'released', to: msg.tabId } satisfies Message)
+        post({ type: 'released', to: msg.tabId, text: persistence.readStored() })
       } else {
-        // An older tab claimed late (e.g. after a clock change); remind it who's newer.
-        claim()
+        post({ type: 'editing', ...me })
       }
-    } else if (msg.type === 'released' && msg.to === me.tabId) {
+    } else if (msg.type === 'editing' && isEditor() && isNewer(msg, me)) {
+      // Read-only first, so blurring discards the stale draft instead of saving it.
+      store.getState().setReadOnly(true)
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       persistence.reload()
+    } else if (msg.type === 'released' && msg.to === me.tabId) {
+      persistence.reload(msg.text)
     }
   }
   const onStorage = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY && store.getState().readOnly) persistence.reload()
+    if (e.key === STORAGE_KEY && !isEditor()) persistence.reload()
   }
 
   channel.addEventListener('message', onMessage)
   events.addEventListener('storage', onStorage)
+  events.addEventListener('pageshow', claim)
+  events.addEventListener('visibilitychange', claim)
   claim()
   return () => {
     channel.removeEventListener('message', onMessage)
     events.removeEventListener('storage', onStorage)
+    events.removeEventListener('pageshow', claim)
+    events.removeEventListener('visibilitychange', claim)
     channel.close()
   }
 }

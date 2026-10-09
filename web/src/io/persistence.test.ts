@@ -139,6 +139,16 @@ describe('persistence (§11.1)', () => {
     expect(usePersistence.getState()).toMatchObject({ status: 'ok', blockedBy: null })
   })
 
+  it("can't overwrite a blocked copy from a read-only tab", () => {
+    storage.data.set(STORAGE_KEY, '{"schemaVer')
+    const p = startPersistence(() => storage, store)
+    stop = p.stop
+    store.getState().setReadOnly(true)
+    p.overwriteBlocked()
+    expect(stored()).toBe('{"schemaVer')
+    expect(usePersistence.getState().status).toBe('blocked')
+  })
+
   it('works in memory when storage throws', () => {
     stop = startPersistence(() => {
       throw new DOMException('denied', 'SecurityError')
@@ -157,6 +167,16 @@ describe('persistence (§11.1)', () => {
     editNotes('b')
     expect(usePersistence.getState().status).toBe('ok')
     expect(stored()).toBe(serializeWorkspace(withNotes('b'), 0))
+  })
+
+  it('clears full storage when undo goes back to what is stored', () => {
+    start()
+    editNotes('a')
+    storage.failWrites = quotaError
+    editNotes('too much')
+    expect(usePersistence.getState().status).toBe('full')
+    store.getState().undo()
+    expect(usePersistence.getState().status).toBe('ok')
   })
 
   it('reports other write errors as unavailable', () => {
@@ -187,6 +207,18 @@ describe('persistence (§11.1)', () => {
     editNotes('b')
     p.reload()
     expect(store.getState().past).toHaveLength(1)
+  })
+
+  it('loads the text handed over by the previous editor, until this tab has saved', () => {
+    storage.data.set(STORAGE_KEY, serializeWorkspace(withNotes('before'), 0))
+    const p = startPersistence(() => storage, store)
+    stop = p.stop
+    p.reload(serializeWorkspace(withNotes('handed over'), 0))
+    expect(store.getState().workspace.notes).toBe('handed over')
+
+    editNotes('mine')
+    p.reload(serializeWorkspace(withNotes('stale'), 0))
+    expect(store.getState().workspace.notes).toBe('mine')
   })
 
   it('asks for persistent storage once the workspace has content', () => {

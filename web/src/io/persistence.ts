@@ -35,8 +35,12 @@ interface WorkspaceStore {
 }
 
 export interface Persistence {
-  /** Re-reads the stored workspace and loads it if another tab changed it (§11.1). */
-  reload(): void
+  /**
+   * Re-reads the stored workspace and loads it if another tab changed it
+   * (§11.1). `handedOver` is the text the previous editor tab saved, which
+   * can arrive before its write is visible in this tab's storage.
+   */
+  reload(handedOver?: string | null): void
   /** The stored text: what was saved, or the copy that couldn't be opened. */
   readStored(): string | null
   /** The pre-migration backup, if any. */
@@ -62,8 +66,8 @@ export function persistence(): Persistence | null {
  * shows the welcome view for a workspace that is about to load.
  *
  * Saves are synchronous and not debounced, because edits already commit once
- * per field (§12.5). Nothing is written while read-only (another tab is the
- * editor) or while the stored copy is blocked.
+ * per field (§12.5). Nothing is ever written while read-only (another tab is
+ * the editor) or while the stored copy is blocked.
  */
 export function startPersistence(getStorage: () => Storage, store: WorkspaceStore, migrations = MIGRATIONS): Persistence {
   active?.stop()
@@ -75,6 +79,7 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
   let lastText: string | null = null
   /** An original awaiting backup before its migrated version may be saved over it. */
   let pendingBackup: string | null = null
+  let hasSaved = false
   let persistRequested = false
 
   function requestPersistOnce(workspace: Workspace) {
@@ -84,9 +89,10 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
   }
 
   function save(workspace: Workspace) {
-    if (!storage || usePersistence.getState().status === 'blocked') return
+    if (!storage || store.getState().readOnly || usePersistence.getState().status === 'blocked') return
     const text = serializeWorkspace(workspace, 0)
-    if (text === lastText && pendingBackup === null) return
+    // Already stored, e.g. undoing the edit that didn't fit.
+    if (text === lastText && pendingBackup === null) return setStatus('ok')
     try {
       if (pendingBackup !== null) {
         storage.setItem(BACKUP_KEY, pendingBackup)
@@ -95,6 +101,7 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
       }
       storage.setItem(STORAGE_KEY, text)
       lastText = text
+      hasSaved = true
       setStatus('ok')
     } catch (e) {
       setStatus(isQuotaError(e) ? 'full' : 'unavailable')
@@ -102,12 +109,12 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
     requestPersistOnce(workspace)
   }
 
-  /** Reads and opens the stored workspace. Returns false if storage can't be read. */
-  function read(): boolean {
+  /** Reads and opens the stored workspace, or `given` instead. Returns false if storage can't be read. */
+  function read(given?: string | null): boolean {
     let text: string | null
     try {
       storage ??= getStorage()
-      text = storage.getItem(STORAGE_KEY)
+      text = given ?? storage.getItem(STORAGE_KEY)
       usePersistence.setState({ hasBackup: storage.getItem(BACKUP_KEY) !== null })
     } catch {
       storage = null
@@ -126,7 +133,7 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
     if (parsed.migratedFrom !== undefined) {
       // Keep the original until it's backed up; if that fails, save() leaves it alone.
       pendingBackup = text
-      if (!store.getState().readOnly) save(parsed.workspace)
+      save(parsed.workspace)
     }
     requestPersistOnce(parsed.workspace)
     return true
@@ -134,12 +141,13 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
 
   const unsubscribe = read()
     ? store.subscribe((state, prev) => {
-        if (state.workspace !== prev.workspace && !state.readOnly) save(state.workspace)
+        if (state.workspace !== prev.workspace) save(state.workspace)
       })
     : () => {}
 
   const self: Persistence = {
-    reload: () => void read(),
+    // Once this tab has saved, its own copy is newer than anything handed over.
+    reload: (handedOver) => void read(hasSaved ? undefined : handedOver),
     readStored() {
       try {
         return storage?.getItem(STORAGE_KEY) ?? null
@@ -155,7 +163,7 @@ export function startPersistence(getStorage: () => Storage, store: WorkspaceStor
       }
     },
     overwriteBlocked() {
-      if (usePersistence.getState().status !== 'blocked') return
+      if (usePersistence.getState().status !== 'blocked' || store.getState().readOnly) return
       usePersistence.setState({ status: 'ok', blockedBy: null })
       save(store.getState().workspace)
     },
