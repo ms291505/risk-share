@@ -1,6 +1,14 @@
 import type Big from 'big.js'
-import { decimalPlaces, HUNDRED, parseDecimal, roundToMinor, ZERO } from './decimal'
-import type { AmountGroup, AmountSet, AmountTotals, Invalid, Issue } from './types'
+import { decimalPlaces, HUNDRED, parseDecimal, roundToMinor, toDecimalString, ZERO } from './decimal'
+import type {
+  AmountComponent,
+  AmountGroup,
+  AmountSet,
+  AmountTotals,
+  DecimalString,
+  Invalid,
+  Issue,
+} from './types'
 
 /** Replaces one input of an amount set, for sweeps (§9). Values are already rounded to minor units. */
 export type AmountOverride =
@@ -57,6 +65,32 @@ export function groupTotal(group: AmountGroup, opts: GroupTotalOptions): Big | n
     sum = x === null || sum === null ? null : sum.plus(x)
   }
   return sum
+}
+
+/** The components' sum, for switching to a total (§4.3), or null if any amount is invalid. */
+export function sumComponents(
+  components: AmountComponent[],
+  minorUnits: number,
+): DecimalString | null {
+  const group: AmountGroup = { mode: 'components', total: '', components }
+  const sum = groupTotal(group, { key: 'additions', minorUnits, issues: [] })
+  return sum && toDecimalString(sum, minorUnits)
+}
+
+/**
+ * Total additions split into the counterparty-paid part and the rest, for
+ * switching to components (§4.3). Null unless both are valid amounts with
+ * 0 < paid ≤ total; `rest` is null when the counterparty paid all of it.
+ */
+export function splitCounterpartyPaid(
+  total: DecimalString,
+  paid: DecimalString | undefined,
+  minorUnits: number,
+): { paid: DecimalString; rest: DecimalString | null } | null {
+  const t = parseAmount(total, minorUnits, [], [])
+  const p = parseAmount(paid, minorUnits, [], [])
+  if (!t || !p || p.lte(0) || p.gt(t)) return null
+  return { paid: paid!, rest: p.eq(t) ? null : toDecimalString(t.minus(p), minorUnits) }
 }
 
 /**

@@ -4,7 +4,14 @@ export { D, parseDecimal, isDecimalString, toDecimalString, roundToMinor, niceSt
 export { minorUnits } from './currency'
 export { isInvalid } from './result'
 export { activeSides, defaultTierName } from './terms'
-export { evaluateAmountSet, type AmountOverride, type AmountResult } from './amounts'
+export {
+  evaluateAmountSet,
+  parseAmount,
+  sumComponents,
+  splitCounterpartyPaid,
+  type AmountOverride,
+  type AmountResult,
+} from './amounts'
 export { computeCR } from './costRatio'
 export { settle } from './settle'
 export { netPositions } from './netPosition'
