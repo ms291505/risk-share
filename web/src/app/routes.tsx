@@ -1,5 +1,5 @@
 import type { RouteObject } from 'react-router'
-import { AmountSetsPage } from '../pages/AmountSetsPage'
+import { AmountSetsPage } from '../pages/amountSets/AmountSetsPage'
 import { ErrorPage } from '../pages/ErrorPage'
 import { HomePage } from '../pages/HomePage'
 import { NotFoundPage } from '../pages/NotFoundPage'

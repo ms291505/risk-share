@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createHashRouter, RouterProvider } from 'react-router'
+import { createHashRouter } from 'react-router'
+import { RouterProvider } from 'react-router/dom'
 import { AppProviders } from './app/AppProviders'
 import { routes } from './app/routes'
 import { startPersistence } from './io/persistence'

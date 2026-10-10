@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router'
+import { createMemoryRouter, type RouteObject } from 'react-router'
+import { RouterProvider } from 'react-router/dom'
 import { templateTerms } from '../calc'
 import { useWorkspaceStore } from '../state/store'
 import { emptyWorkspace } from '../state/workspace'
