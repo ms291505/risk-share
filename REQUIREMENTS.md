@@ -51,6 +51,15 @@
 1. **Number entry** follows the workspace locale's decimal and grouping
    separators (e.g. `1.000,50` in a German locale). Input that can't be parsed
    unambiguously shows an inline error rather than guessing.
+   - Grouping is optional, but where it's used it must match the locale
+     exactly, so `1.5` in a German locale is an error rather than 15.
+   - Number fields also accept the workspace currency's symbol or code (so a
+     pasted `$1,000,000.00` works), accounting negatives such as `(5,000)`,
+     and the Unicode minus `−`. Other currencies and suffixes such as `k` are
+     errors.
+   - Text that can't be read stays in the field with the error and isn't
+     saved: the saved value is unchanged, and Escape or leaving the view
+     shows it again.
 1. Currency amounts are entered and stored to the currency's minor unit (no
    fractional cents).
 1. Workspace notes support basic markdown (bold, italics, lists, links).
@@ -74,17 +83,22 @@
 ## 4. Amounts (additions & deductions)
 
 1. An **amount set** is a named, reusable collection of additions and
-   deductions.
+   deductions. Amount set and component names follow the party name rules
+   (§3.3) but needn't be unique. Name problems show inline errors but don't
+   make the amount set invalid.
 1. Gain or loss = total additions − total deductions. Positive is a gain;
    negative is a loss.
 1. Additions and deductions are composable: users can enter a total directly
    or enter named components that sum to it. Additions and deductions each
    choose their mode independently.
    - Switching from components to a total starts the total at the
-     components' sum. The components are kept but inactive, and switching
-     back restores them.
+     components' sum, and for additions the paid-by-counterparty amount
+     (§4.6) at the sum of the marked components (blank if none are marked).
+     The components are kept but inactive, and switching back restores them.
    - Switching from a total to components starts with one component equal to
-     the total.
+     the total. For additions with a counterparty-paid amount, that amount
+     becomes its own marked component, "Paid by counterparty", and any rest
+     becomes "Other additions", so both numbers are kept.
    - Inactive components are not used in calculations and cannot be chosen
      as a sweep variable (§9.2).
 1. Individual components may be negative (e.g. rebates within deductions).
@@ -105,6 +119,10 @@
    Any scenario or sweep point that uses an invalid amount set shows "—"
    instead of results, with the reason. (A new amount set starts at additions
    = 0 and is therefore invalid until filled in.)
+1. The amount set editor shows the totals, the gain or loss, the
+   counterparty-paid amount, and the cost ratio **before rounding** (e.g.
+   "80.05% (before rounding)", to at most 4 decimals and marked ≈ when it has
+   more), since each set of terms rounds it its own way (§5).
 
 ## 5. Cost ratio
 
