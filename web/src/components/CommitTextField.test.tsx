@@ -57,6 +57,30 @@ describe('CommitTextField (§12.5)', () => {
     expect(input.value).toBe('Restored')
   })
 
+  it('keeps text it cannot parse, with the error, and commits nothing', () => {
+    const onCommit = vi.fn()
+    const parse = (text: string) =>
+      text === 'ok' ? { ok: true as const, value: 'OK' } : { ok: false as const, error: 'Bad' }
+    const view = render(<CommitTextField label="Code" value="A" onCommit={onCommit} parse={parse} />)
+    const input = screen.getByLabelText('Code') as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'nope' } })
+    fireEvent.blur(input)
+    expect(input.value).toBe('nope')
+    expect(screen.getByRole('textbox', { description: 'Bad' })).toBe(input)
+    expect(onCommit).not.toHaveBeenCalled()
+
+    fireEvent.change(input, { target: { value: 'ok' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith('OK')
+    expect(screen.queryByText('Bad')).toBeNull()
+
+    fireEvent.change(input, { target: { value: 'nope' } })
+    fireEvent.blur(input)
+    view.rerender(<CommitTextField label="Code" value="B" onCommit={onCommit} parse={parse} />)
+    expect(input.value).toBe('B')
+    expect(screen.queryByText('Bad')).toBeNull()
+  })
+
   it('links the error to the field', () => {
     render(<CommitTextField label="Other" value="" onCommit={() => {}} error="Enter a name." />)
     expect(screen.getByLabelText('Other').getAttribute('aria-describedby')).toBeTruthy()
