@@ -29,6 +29,7 @@ const MESSAGES: Record<IssueCode, string | ((p: NonNullable<Params>) => string)>
   nameTooLong: (p) => `Use at most ${p.max} characters.`,
   partyNamesSame: 'The two parties need different names.',
   tooManyPoints: (p) => `This range has ${p.count} points; the limit is ${p.max}. Increase the step.`,
+  unreadableNumber: (p) => `Enter a number like ${p.example}. This workspace uses "${p.decimal}" for decimals.`,
 }
 
 /** A user-facing sentence for a validation issue (§6.4). All validation copy lives here. */

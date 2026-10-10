@@ -120,6 +120,8 @@ export type IssueCode =
   | 'nameTooLong'
   | 'partyNamesSame'
   | 'tooManyPoints'
+  // Number entry (§2.4), from format/numberInput.ts.
+  | 'unreadableNumber'
 
 export interface Issue {
   code: IssueCode
