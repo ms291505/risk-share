@@ -74,7 +74,9 @@
    - **Counterparty**: the party on whose behalf the risk-bearer operates
      (e.g. Bob).
 1. Users can name both parties. Results always show direction clearly
-   (who pays whom).
+   (who pays whom). Wherever the app refers to a party, it uses the party's
+   name (e.g. "Paid by Bob"); the role names appear only where the roles
+   themselves are being labeled, such as the party name fields.
 1. Party names are trimmed of leading/trailing spaces, must be non-empty, are
    at most 80 characters (counting each emoji, even a combined one like a
    flag, as one), and must differ from each other (ignoring case). Invalid
@@ -91,16 +93,21 @@
 1. Additions and deductions are composable: users can enter a total directly
    or enter named components that sum to it. Additions and deductions each
    choose their mode independently.
-   - Switching from components to a total starts the total at the
-     components' sum, and for additions the paid-by-counterparty amount
-     (§4.6) at the sum of the marked components (blank if none are marked).
-     The components are kept but inactive, and switching back restores them.
-   - Switching from a total to components starts with one component equal to
-     the total. For additions with a counterparty-paid amount, that amount
-     becomes its own marked component, "Paid by counterparty", and any rest
-     becomes "Other additions", so both numbers are kept.
-   - Inactive components are not used in calculations and cannot be chosen
-     as a sweep variable (§9.2).
+   - Splitting a total into components starts with one component equal to
+     the total. For additions with a counterparty-paid amount (§4.6), that
+     amount becomes its own marked component, "Paid by ‹counterparty›", and
+     any rest becomes "Other additions", so both numbers are kept.
+   - Components show their total below them (and for additions, the amount
+     paid by the counterparty), as well as in the amount set's summary.
+   - Going back from components to a total is a deliberate reset: after a
+     confirmation, the components are removed, and the total starts at their
+     sum (blank if an amount can't be read). For additions, the
+     counterparty-paid amount starts at the sum of the marked components
+     (blank if none are marked). This can be undone.
+   - Components are never kept hidden to be restored later. Components
+     stored alongside a total (possible in imported files) are inactive: they
+     aren't used in calculations or offered as a sweep variable (§9.2), and
+     splitting the total into components replaces them.
 1. Individual components may be negative (e.g. rebates within deductions).
 1. Total additions must be > 0 (see §4.7 for how invalid data behaves). Total
    deductions may be zero or negative.

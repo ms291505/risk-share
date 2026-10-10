@@ -7,7 +7,8 @@ import {
   duplicateAmountSet,
   newAmountSet,
   newComponent,
-  switchGroupMode,
+  replaceComponentsWithTotal,
+  splitIntoComponents,
 } from './amountSets'
 import { emptyWorkspace, type Scenario, type SavedSweep } from './workspace'
 
@@ -83,62 +84,37 @@ describe('deleting an amount set (§8.6)', () => {
   })
 })
 
-describe('switchGroupMode (§4.3)', () => {
-  it('totals the components, keeping them inactive', () => {
-    const set = withComponents('deductions', [component('Claims', '900000'), component('Rebates', '-12500.5')])
-    const next = switchGroupMode(set, 'deductions', 'total', USD)
-    expect(next.deductions).toEqual({ ...set.deductions, mode: 'total', total: '887499.50' })
-  })
+describe('splitIntoComponents (§4.3)', () => {
+  const split = (set: AmountSet, key: 'additions' | 'deductions') => splitIntoComponents(set, key, USD, 'Bob')[key]
 
-  it('keeps the old total when a component is unreadable', () => {
-    const set = withComponents('deductions', [component('Claims', 'abc')])
-    expect(switchGroupMode(set, 'deductions', 'total', USD).deductions.total).toBe('800000')
-  })
-
-  it('totals the components marked as paid by the counterparty (§4.6)', () => {
-    const set = withComponents('additions', [component('Premiums', '800000', true), component('Other', '200000')])
-    expect(switchGroupMode(set, 'additions', 'total', USD).additions).toMatchObject({
-      mode: 'total',
-      total: '1000000.00',
-      paidByCounterparty: '800000.00',
-    })
-  })
-
-  it('leaves the counterparty-paid amount blank when nothing is marked', () => {
-    const set = withComponents('additions', [component('Other', '200000')])
-    set.additions.paidByCounterparty = '5'
-    expect(switchGroupMode(set, 'additions', 'total', USD).additions.paidByCounterparty).toBeUndefined()
-  })
-
-  it('restores kept components unchanged', () => {
-    const set = withComponents('deductions', [component('Claims', '900000')])
-    const back = switchGroupMode(switchGroupMode(set, 'deductions', 'total', USD), 'deductions', 'components', USD)
-    expect(back.deductions.components).toEqual(set.deductions.components)
-  })
-
-  it('starts components with one equal to the total', () => {
-    const next = switchGroupMode(amounts('1000000', '800500.25'), 'deductions', 'components', USD)
-    expect(next.deductions.mode).toBe('components')
-    expect(next.deductions.components).toMatchObject([{ name: 'Component 1', amount: '800500.25' }])
+  it('starts with one component equal to the total', () => {
+    const deductions = split(amounts('1000000', '800500.25'), 'deductions')
+    expect(deductions.mode).toBe('components')
+    expect(deductions.components).toMatchObject([{ name: 'Component 1', amount: '800500.25' }])
   })
 
   it('starts with a blank component when the total is unreadable', () => {
-    const next = switchGroupMode(amounts('1000000', '1.234'), 'deductions', 'components', USD)
-    expect(next.deductions.components).toMatchObject([{ name: 'Component 1', amount: '' }])
+    expect(split(amounts('1000000', '1.234'), 'deductions').components).toMatchObject([
+      { name: 'Component 1', amount: '' },
+    ])
   })
 
-  it('splits additions to keep the counterparty-paid amount', () => {
-    const next = switchGroupMode(amounts('1000000', '0', '250000.50'), 'additions', 'components', USD)
-    expect(next.additions.components).toMatchObject([
-      { name: 'Paid by counterparty', amount: '250000.50', paidByCounterparty: true },
+  it('replaces components stored alongside the total', () => {
+    const set = amounts('1000', '50')
+    set.deductions.components = [component('Old', '1')]
+    expect(split(set, 'deductions').components).toMatchObject([{ name: 'Component 1', amount: '50' }])
+  })
+
+  it('splits additions to keep the amount paid by the counterparty, named after it', () => {
+    expect(split(amounts('1000000', '0', '250000.50'), 'additions').components).toMatchObject([
+      { name: 'Paid by Bob', amount: '250000.50', paidByCounterparty: true },
       { name: 'Other additions', amount: '749999.50' },
     ])
   })
 
   it('marks the one component when the counterparty paid all of it', () => {
-    const next = switchGroupMode(amounts('1000', '0', '1000'), 'additions', 'components', USD)
-    expect(next.additions.components).toMatchObject([
-      { name: 'Paid by counterparty', amount: '1000', paidByCounterparty: true },
+    expect(split(amounts('1000', '0', '1000'), 'additions').components).toMatchObject([
+      { name: 'Paid by Bob', amount: '1000', paidByCounterparty: true },
     ])
   })
 
@@ -148,7 +124,40 @@ describe('switchGroupMode (§4.3)', () => {
     ['more than the total', '2000'],
     ['unreadable', 'x'],
   ])('ignores a counterparty-paid amount that is %s', (_, paid) => {
-    const next = switchGroupMode(amounts('1000', '0', paid), 'additions', 'components', USD)
-    expect(next.additions.components).toMatchObject([{ name: 'Component 1', amount: '1000' }])
+    expect(split(amounts('1000', '0', paid), 'additions').components).toMatchObject([
+      { name: 'Component 1', amount: '1000' },
+    ])
+  })
+})
+
+describe('replaceComponentsWithTotal (§4.3)', () => {
+  it('removes the components and totals them', () => {
+    const set = withComponents('deductions', [component('Claims', '900000'), component('Rebates', '-12500.5')])
+    expect(replaceComponentsWithTotal(set, 'deductions', USD).deductions).toEqual({
+      mode: 'total',
+      total: '887499.50',
+      components: [],
+    })
+  })
+
+  it('leaves the total blank when an amount is unreadable', () => {
+    const set = withComponents('deductions', [component('Claims', 'abc')])
+    expect(replaceComponentsWithTotal(set, 'deductions', USD).deductions.total).toBe('')
+  })
+
+  it('totals the components marked as paid by the counterparty (§4.6)', () => {
+    const set = withComponents('additions', [component('Premiums', '800000', true), component('Other', '200000')])
+    expect(replaceComponentsWithTotal(set, 'additions', USD).additions).toMatchObject({
+      mode: 'total',
+      total: '1000000.00',
+      components: [],
+      paidByCounterparty: '800000.00',
+    })
+  })
+
+  it('leaves the counterparty-paid amount blank when nothing is marked', () => {
+    const set = withComponents('additions', [component('Other', '200000')])
+    set.additions.paidByCounterparty = '5'
+    expect(replaceComponentsWithTotal(set, 'additions', USD).additions.paidByCounterparty).toBeUndefined()
   })
 })

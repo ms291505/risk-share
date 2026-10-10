@@ -76,7 +76,9 @@ describe('parseNumberInput (§2.4)', () => {
 
   it('explains the locale in its error', () => {
     const r = parseNumberInput('1.5', { locale: 'de-DE' })
-    expect(!r.ok && issueMessage(r.issue)).toBe('Enter a number like 1.234,56. This workspace uses "," for decimals.')
+    expect(!r.ok && issueMessage(r.issue, { riskBearer: 'Lisa', counterparty: 'Bob' })).toBe(
+      'Enter a number like 1.234,56. This workspace uses "," for decimals.',
+    )
   })
 })
 

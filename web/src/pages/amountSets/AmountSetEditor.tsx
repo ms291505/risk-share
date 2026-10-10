@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack'
 import { useMemo } from 'react'
 import { evaluateAmountSet, minorUnits, type AmountSet } from '../../calc'
 import { CommitTextField } from '../../components/CommitTextField'
-import { issueMessage } from '../../format/issues'
+import { useIssueMessage } from '../../format/useIssueMessage'
 import { nameIssues, normalizeName } from '../../state/names'
 import { useWorkspaceStore } from '../../state/store'
 import { AmountGroupEditor } from './AmountGroupEditor'
@@ -29,6 +29,7 @@ export function AmountSetEditor({ set, onDuplicate, onDelete }: Props) {
   const result = useMemo(() => evaluateAmountSet(set, minorUnits(currency)), [set, currency])
   const issues = result.ok ? [] : result.issues
   const nameIssue = nameIssues(set.name, ['name'])[0]
+  const message = useIssueMessage()
 
   return (
     <Stack spacing={4} sx={{ flexGrow: 1, minWidth: 0, maxWidth: 760 }}>
@@ -37,7 +38,7 @@ export function AmountSetEditor({ set, onDuplicate, onDelete }: Props) {
           id={focusIds.name}
           label="Name"
           value={set.name}
-          error={nameIssue ? issueMessage(nameIssue) : null}
+          error={nameIssue ? message(nameIssue) : null}
           onCommit={(name) =>
             updateAmountSet(set.id, 'Rename amount set', (s) => {
               s.name = normalizeName(name)

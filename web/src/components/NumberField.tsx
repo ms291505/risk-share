@@ -1,7 +1,7 @@
 import InputAdornment from '@mui/material/InputAdornment'
 import { useId } from 'react'
 import { minorUnits, type DecimalString } from '../calc'
-import { issueMessage } from '../format/issues'
+import { useIssueMessage } from '../format/useIssueMessage'
 import { currencyAffix, formatNumberInput, parseNumberInput } from '../format/numberInput'
 import { useWorkspaceStore } from '../state/store'
 import { CommitTextField, type CommitTextFieldProps, type ParseResult } from './CommitTextField'
@@ -30,6 +30,7 @@ export function NumberField({
   ...props
 }: NumberFieldProps) {
   const { locale, currency } = useWorkspaceStore((s) => s.workspace.settings)
+  const message = useIssueMessage()
   const autoId = useId()
   const fieldId = id ?? autoId
   const unitId = `${fieldId}-unit`
@@ -39,7 +40,7 @@ export function NumberField({
     formatNumberInput(v, { locale, minFractionDigits: isCurrency ? minorUnits(currency) : 0 })
   const parse = (text: string): ParseResult => {
     const parsed = parseNumberInput(text, { locale, currency: isCurrency ? currency : undefined })
-    return parsed.ok ? parsed : { ok: false, error: issueMessage(parsed.issue) }
+    return parsed.ok ? parsed : { ok: false, error: message(parsed.issue) }
   }
   const affix = isCurrency ? currencyAffix(locale, currency) : { symbol: '%', position: 'end' as const }
   const unitName = isCurrency ? new Intl.DisplayNames([locale], { type: 'currency' }).of(currency) : 'percent'
@@ -68,6 +69,8 @@ export function NumberField({
         htmlInput: {
           ...slotProps?.htmlInput,
           inputMode: allowNegative ? undefined : 'decimal',
+          // Right-aligned, so amounts in a column line up by digit.
+          style: { textAlign: 'right' },
           // Replaces MUI's own description, so it names the helper text (the error) too.
           'aria-describedby': `${fieldId}-helper-text ${unitId}`,
         },

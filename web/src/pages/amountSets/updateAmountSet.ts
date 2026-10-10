@@ -1,5 +1,6 @@
 import type { Draft } from 'immer'
-import type { AmountSet } from '../../calc'
+import type { AmountGroup, AmountSet } from '../../calc'
+import type { GroupKey } from '../../state/amountSets'
 import { useWorkspaceStore } from '../../state/store'
 
 export const amountSetPath = (id: string) => `/amounts/${id}`
@@ -12,4 +13,9 @@ export function updateAmountSet(id: string, label: string, recipe: (set: Draft<A
     const replacement = recipe(w.amountSets[index])
     if (replacement) w.amountSets[index] = replacement
   })
+}
+
+/** An undoable change to an amount set's additions or deductions. */
+export function updateGroup(id: string, key: GroupKey, label: string, recipe: (group: Draft<AmountGroup>) => void) {
+  updateAmountSet(id, label, (set) => recipe(set[key]))
 }

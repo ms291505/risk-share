@@ -1,7 +1,18 @@
 import type { Issue, Parties, PartyRole } from '../calc'
-import { nameIssues, sameName } from './names'
+import { nameIssues, normalizeName, sameName } from './names'
 
 const ROLES: PartyRole[] = ['riskBearer', 'counterparty']
+
+export const ROLE_LABELS: Record<PartyRole, string> = { riskBearer: 'Risk-bearer', counterparty: 'Counterparty' }
+
+/**
+ * How text refers to a party: by its name (§3.2), e.g. "Paid by Bob". The
+ * role stands in only while the name is blank, which the Workspace view
+ * flags as an error.
+ */
+export function partyName(parties: Parties, role: PartyRole): string {
+  return normalizeName(parties[role]) || ROLE_LABELS[role]
+}
 
 /**
  * §3.3: names follow the shared name rules and differ from each other ignoring

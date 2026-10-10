@@ -1,10 +1,12 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useId } from 'react'
-import { computeCR, type AmountResult, type AmountSet } from '../../calc'
+import { computeCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
 import { gainOrLoss, unroundedPct } from '../../format/formatters'
 import { useFormatters } from '../../format/useFormatters'
-import { describeIssue } from './labels'
+import { useIssueMessage } from '../../format/useIssueMessage'
+import { useWorkspaceStore } from '../../state/store'
+import { issueField, paidByLabel } from './labels'
 
 /**
  * The set's totals and its cost ratio before rounding, which each set of
@@ -13,7 +15,13 @@ import { describeIssue } from './labels'
  */
 export function AmountSetSummary({ set, result }: { set: AmountSet; result: AmountResult }) {
   const f = useFormatters()
+  const parties = useWorkspaceStore((s) => s.workspace.parties)
+  const message = useIssueMessage()
   const headingId = useId()
+  const describe = (issue: Issue) => {
+    const field = issueField(set, issue, parties)
+    return field ? `${field}: ${message(issue)}` : message(issue)
+  }
   let content
   if (result.ok) {
     const { additions, deductions, gainLoss, counterpartyPaid } = result.totals
@@ -23,7 +31,7 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
       ['Total additions', f.currency(additions)],
       ['Total deductions', f.currency(deductions)],
       ['Gain or loss', gainOrLoss(gainLoss, f)],
-      ['Paid by counterparty', f.currency(counterpartyPaid)],
+      [paidByLabel(parties), f.currency(counterpartyPaid)],
       ['Cost ratio', `${unroundedPct(cr, f)} (before rounding)`],
     ]
     content = (
@@ -43,7 +51,7 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
       <>
         <Typography>Fix these to see the totals:</Typography>
         <Box component="ul" sx={{ m: 0, pl: 3 }}>
-          {[...new Set(result.issues.map((issue) => describeIssue(set, issue)))].map((text) => (
+          {[...new Set(result.issues.map(describe))].map((text) => (
             <Typography component="li" key={text}>
               {text}
             </Typography>

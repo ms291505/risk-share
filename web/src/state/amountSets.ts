@@ -1,8 +1,16 @@
-import { parseAmount, splitCounterpartyPaid, sumComponents, type AmountComponent, type AmountSet } from '../calc'
+import {
+  parseAmount,
+  splitCounterpartyPaid,
+  sumComponents,
+  type AdditionsGroup,
+  type AmountComponent,
+  type AmountGroup,
+  type AmountSet,
+  type DecimalString,
+} from '../calc'
 import type { SavedSweep, Scenario, Workspace } from './workspace'
 
 export type GroupKey = 'additions' | 'deductions'
-export type GroupMode = 'total' | 'components'
 
 const newId = () => crypto.randomUUID()
 
@@ -66,30 +74,49 @@ export function deleteAmountSet(workspace: Workspace, id: string): void {
 }
 
 /**
- * Switches additions or deductions between a total and components (§4.3).
- *
- * - To a total: the total becomes the components' sum, and for additions the
- *   counterparty-paid amount becomes the sum of the marked components. The
- *   components are kept, inactive. A sum that can't be worked out leaves the
- *   old value.
- * - To components: kept components come back unchanged. Otherwise the total
- *   becomes one component; for additions with a counterparty-paid amount
- *   below the total, two, so that both numbers are kept.
+ * Turns a total into components (§4.3): one equal to the total, or for
+ * additions with an amount paid by the counterparty, that amount as its own
+ * marked component plus the rest, so both numbers are kept. Any components
+ * stored alongside the total (only imported files have them) are replaced.
  */
-export function switchGroupMode(set: AmountSet, key: GroupKey, mode: GroupMode, minorUnits: number): AmountSet {
+export function splitIntoComponents(
+  set: AmountSet,
+  key: GroupKey,
+  minorUnits: number,
+  counterparty: string,
+): AmountSet {
   const group = set[key]
-  if (group.mode === mode) return set
-  if (mode === 'total') {
-    const total = sumComponents(group.components, minorUnits) ?? group.total
-    if (key === 'deductions') return { ...set, deductions: { ...set.deductions, mode, total } }
-    const marked = set.additions.components.filter((c) => c.paidByCounterparty)
-    const paid = marked.length ? (sumComponents(marked, minorUnits) ?? set.additions.paidByCounterparty) : undefined
-    return { ...set, additions: { ...set.additions, mode, total, paidByCounterparty: paid } }
-  }
+  if (group.mode === 'components') return set
+  const components =
+    key === 'additions'
+      ? splitAdditions(set.additions, minorUnits, counterparty)
+      : [totalComponent(group.total, minorUnits)]
+  return { ...set, [key]: { ...group, mode: 'components', components } }
+}
 
-  if (group.components.length) return { ...set, [key]: { ...group, mode } }
-  const components = key === 'additions' ? splitAdditions(set, minorUnits) : [totalComponent(group.total, minorUnits)]
-  return { ...set, [key]: { ...group, mode, components } }
+export interface ComponentTotals {
+  /** Null if an amount can't be read. */
+  total: DecimalString | null
+  /** The components marked as paid by the counterparty (additions only). */
+  paid: DecimalString | null
+}
+
+export function componentTotals(group: AmountGroup, minorUnits: number): ComponentTotals {
+  const marked = group.components.filter((c) => c.paidByCounterparty)
+  return { total: sumComponents(group.components, minorUnits), paid: sumComponents(marked, minorUnits) }
+}
+
+/**
+ * Removes the components and uses their sum as the total (§4.3), blank if
+ * it can't be worked out. For additions, the counterparty-paid amount becomes
+ * the sum of the marked components, or blank if none are marked.
+ */
+export function replaceComponentsWithTotal(set: AmountSet, key: GroupKey, minorUnits: number): AmountSet {
+  const { total, paid } = componentTotals(set[key], minorUnits)
+  const group = { ...set[key], mode: 'total' as const, total: total ?? '', components: [] }
+  if (key === 'deductions') return { ...set, deductions: group }
+  const anyMarked = set.additions.components.some((c) => c.paidByCounterparty)
+  return { ...set, additions: { ...group, paidByCounterparty: anyMarked ? (paid ?? '') : undefined } }
 }
 
 /** The total as one component, blank if it can't be read. */
@@ -98,9 +125,9 @@ function totalComponent(total: string, minorUnits: number): AmountComponent {
   return { id: newId(), name: 'Component 1', amount: readable ? total : '' }
 }
 
-function splitAdditions(set: AmountSet, minorUnits: number): AmountComponent[] {
-  const split = splitCounterpartyPaid(set.additions.total, set.additions.paidByCounterparty, minorUnits)
-  if (!split) return [totalComponent(set.additions.total, minorUnits)]
-  const paid = { id: newId(), name: 'Paid by counterparty', amount: split.paid, paidByCounterparty: true }
+function splitAdditions(additions: AdditionsGroup, minorUnits: number, counterparty: string): AmountComponent[] {
+  const split = splitCounterpartyPaid(additions.total, additions.paidByCounterparty, minorUnits)
+  if (!split) return [totalComponent(additions.total, minorUnits)]
+  const paid = { id: newId(), name: `Paid by ${counterparty}`, amount: split.paid, paidByCounterparty: true }
   return split.rest === null ? [paid] : [paid, { id: newId(), name: 'Other additions', amount: split.rest }]
 }

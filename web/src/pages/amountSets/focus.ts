@@ -5,6 +5,7 @@ export const focusIds = {
   newAmountSet: 'new-amount-set',
   list: 'amount-set-list',
   name: 'amount-set-name',
+  total: (key: GroupKey) => `total-${key}`,
   componentName: (id: string) => `component-${id}-name`,
   removeComponent: (id: string) => `component-${id}-remove`,
   addComponent: (key: GroupKey) => `add-${key}-component`,

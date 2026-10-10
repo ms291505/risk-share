@@ -30,6 +30,11 @@ const summary = () => within(screen.getByRole('region', { name: 'Summary' })).ge
 /** The value next to a term in the summary, e.g. "Cost ratio". */
 const summaryValue = (term: string) => within(summary()).getByText(term).nextElementSibling?.textContent
 const undo = () => act(() => void store.getState().undo())
+const section = (name: string) => screen.getByRole('region', { name })
+/** The amount in a components table's footer row, e.g. "Total deductions". */
+const footerValue = (rowHeader: string) =>
+  screen.getByRole('rowheader', { name: rowHeader }).nextElementSibling?.textContent
+const LISA_AND_BOB = { riskBearer: 'Lisa', counterparty: 'Bob' }
 
 function workspaceWith(patch: Partial<Workspace>): Workspace {
   return { ...emptyWorkspace('en-US'), ...patch }
@@ -70,43 +75,60 @@ describe('amount sets view (§4)', () => {
     expect(store.getState().past).toEqual([])
   })
 
-  it('switches between a total and components, and back (§4.3)', () => {
+  it('splits a total into components, and shows what they add up to (§4.3)', () => {
     store.getState().load(workspaceWith({ amountSets: [amounts('1000000', '800500')] }))
     renderAt('/amounts')
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'Enter deductions as' })).getByRole('button', { name: 'Components' }),
-    )
+    fireEvent.click(within(section('Deductions')).getByRole('button', { name: 'Split into components' }))
+    expect(document.activeElement).toBe(input('Name, component 1'))
     expect(input('Amount, Component 1').value).toBe('800,500.00')
+    expect(footerValue('Total deductions')).toBe('$800,500.00')
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add component' })[0])
+    fireEvent.click(within(section('Deductions')).getByRole('button', { name: 'Add component' }))
     expect(document.activeElement).toBe(input('Name, component 2'))
     enter('Amount, Component 2', '-500')
+    expect(footerValue('Total deductions')).toBe('$800,000.00')
     expect(summaryValue('Total deductions')).toBe('$800,000.00')
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove Component 1' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Component 2' }))
-
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'Enter deductions as' })).getByRole('button', { name: 'Total' }),
-    )
-    expect(input('Total deductions').value).toBe('-500.00')
-    expect(store.getState().past.at(-1)?.label).toBe('Switch deductions to a total')
   })
 
-  it('marks additions paid by the counterparty (§4.6)', () => {
-    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0', '250')] }))
+  it('goes back to a total only after confirming, keeping the sum (§4.3)', async () => {
+    const set = amounts('1000000', '0')
+    set.deductions = { mode: 'components', total: '5', components: [{ id: 'c1', name: 'Claims', amount: '900000' }] }
+    store.getState().load(workspaceWith({ amountSets: [set] }))
     renderAt('/amounts')
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'Enter additions as' })).getByRole('button', { name: 'Components' }),
-    )
-    const paid = screen.getByRole('checkbox', {
-      name: 'Paid by counterparty, Paid by counterparty',
-    }) as HTMLInputElement
-    const other = screen.getByRole('checkbox', { name: 'Paid by counterparty, Other additions' }) as HTMLInputElement
+    fireEvent.click(within(section('Deductions')).getByRole('button', { name: 'Use a total instead…' }))
+    const dialog = screen.getByRole('dialog', { name: 'Use a total for deductions?' })
+    expect(within(dialog).getByText(/^Remove the component and use a total of \$900,000\.00 instead\?/)).toBeDefined()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(store.getState().past).toEqual([])
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    fireEvent.click(within(section('Deductions')).getByRole('button', { name: 'Use a total instead…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use a total' }))
+    expect(store.getState().workspace.amountSets[0].deductions).toEqual({
+      mode: 'total',
+      total: '900000.00',
+      components: [],
+    })
+    expect(store.getState().past.at(-1)?.label).toBe('Use a total for deductions')
+    await waitFor(() => expect(document.activeElement).toBe(input('Total deductions')))
+    expect(input('Total deductions').value).toBe('900,000.00')
+  })
+
+  it('names the counterparty in what it paid (§3.2, §4.6)', () => {
+    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0', '250')], parties: LISA_AND_BOB }))
+    renderAt('/amounts')
+    expect(input('Paid by Bob (optional)').value).toBe('250.00')
+    fireEvent.click(within(section('Additions')).getByRole('button', { name: 'Split into components' }))
+    const paid = screen.getByRole('checkbox', { name: 'Paid by Bob, Paid by Bob' }) as HTMLInputElement
+    const other = screen.getByRole('checkbox', { name: 'Paid by Bob, Other additions' }) as HTMLInputElement
     expect([paid.checked, other.checked]).toEqual([true, false])
     fireEvent.click(other)
-    expect(summaryValue('Paid by counterparty')).toBe('$1,000.00')
-    expect(store.getState().past.at(-1)?.label).toBe('Mark as paid by counterparty')
+    expect(footerValue('Paid by Bob')).toBe('$1,000.00')
+    expect(summaryValue('Paid by Bob')).toBe('$1,000.00')
+    expect(store.getState().past.at(-1)?.label).toBe('Mark as paid by Bob')
   })
 
   it('duplicates a set right after the original, and opens it', () => {
@@ -130,7 +152,7 @@ describe('amount sets view (§4)', () => {
     store.getState().load(workspaceWith({ amountSets: [amounts('1', '0')] }))
     renderAt('/amounts')
     act(() => store.getState().setReadOnly(true))
-    for (const name of ['New amount set', 'Duplicate', 'Delete…', 'Components']) {
+    for (const name of ['New amount set', 'Duplicate', 'Delete…', 'Split into components']) {
       expect((screen.getAllByRole('button', { name })[0] as HTMLButtonElement).disabled).toBe(true)
     }
     expect(input('Total additions').readOnly).toBe(true)
