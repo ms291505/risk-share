@@ -4,7 +4,6 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import IconButton from '@mui/material/IconButton'
-import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -81,118 +80,126 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
   }
 
   return (
-    <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
-      <Box sx={{ width: '100%', overflowX: 'auto' }}>
-        <Table size="small" aria-label={`${groupLabel} components`}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Amount</TableCell>
-              {isAdditions && <TableCell align="center">{paidBy}</TableCell>}
-              <TableCell>
-                <Box component="span" sx={visuallyHidden}>
-                  Remove
-                </Box>
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {components.map((c, index) => {
-              const row = componentLabel(c, index)
-              const nameIssue = nameIssues(c.name, [])[0]
-              const amountIssue = issueAt(issues, groupKey, 'components', c.id, 'amount')
-              return (
-                <TableRow key={c.id}>
-                  <TableCell sx={{ ...FIELD_CELL, minWidth: 180 }}>
-                    <CommitTextField
-                      id={focusIds.componentName(c.id)}
-                      size="small"
-                      fullWidth
-                      value={c.name}
-                      error={nameIssue ? message(nameIssue) : null}
-                      slotProps={{ htmlInput: { 'aria-label': `Name, component ${index + 1}` } }}
-                      onCommit={(name) =>
-                        edit(c.id, 'Rename component', (draft) => {
-                          draft.name = normalizeName(name)
-                        })
-                      }
-                    />
-                  </TableCell>
-                  <TableCell sx={{ ...FIELD_CELL, minWidth: 180 }}>
-                    <NumberField
-                      kind="currency"
-                      size="small"
-                      fullWidth
-                      // Components may be negative, e.g. rebates (§4.4).
-                      allowNegative
-                      value={c.amount}
-                      error={amountIssue ? message(amountIssue) : null}
-                      slotProps={{ htmlInput: { 'aria-label': `Amount, ${row}` } }}
-                      onCommit={(amount) =>
-                        edit(c.id, 'Edit component amount', (draft) => {
-                          draft.amount = amount
-                        })
-                      }
-                    />
-                  </TableCell>
-                  {isAdditions && (
-                    <TableCell align="center" sx={CONTROL_CELL}>
-                      <Checkbox
-                        checked={Boolean(c.paidByCounterparty)}
-                        disabled={readOnly}
-                        sx={{ p: 1 }}
-                        slotProps={{ input: { 'aria-label': `${paidBy}, ${row}` } }}
-                        onChange={(e) => {
-                          const paid = e.target.checked
-                          const label = `${paid ? 'Mark' : 'Unmark'} as paid by ${partyName(parties, 'counterparty')}`
-                          edit(c.id, label, (draft) => {
-                            draft.paidByCounterparty = paid
-                          })
-                        }}
-                      />
-                    </TableCell>
-                  )}
+    <Box sx={{ width: '100%', overflowX: 'auto' }}>
+      <Table size="small" aria-label={`${groupLabel} components`}>
+        <TableHead>
+          <TableRow>
+            <TableCell>Name</TableCell>
+            <TableCell>Amount</TableCell>
+            {isAdditions && <TableCell align="center">{paidBy}</TableCell>}
+            <TableCell>
+              <Box component="span" sx={visuallyHidden}>
+                Remove
+              </Box>
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {components.map((c, index) => {
+            const row = componentLabel(c, index)
+            const nameIssue = nameIssues(c.name, [])[0]
+            const amountIssue = issueAt(issues, groupKey, 'components', c.id, 'amount')
+            return (
+              <TableRow key={c.id}>
+                <TableCell sx={{ ...FIELD_CELL, minWidth: 180 }}>
+                  <CommitTextField
+                    id={focusIds.componentName(c.id)}
+                    size="small"
+                    fullWidth
+                    value={c.name}
+                    error={nameIssue ? message(nameIssue) : null}
+                    slotProps={{ htmlInput: { 'aria-label': `Name, component ${index + 1}` } }}
+                    onCommit={(name) =>
+                      edit(c.id, 'Rename component', (draft) => {
+                        draft.name = normalizeName(name)
+                      })
+                    }
+                  />
+                </TableCell>
+                <TableCell sx={{ ...FIELD_CELL, minWidth: 180 }}>
+                  <NumberField
+                    kind="currency"
+                    size="small"
+                    fullWidth
+                    // Components may be negative, e.g. rebates (§4.4).
+                    allowNegative
+                    value={c.amount}
+                    error={amountIssue ? message(amountIssue) : null}
+                    slotProps={{ htmlInput: { 'aria-label': `Amount, ${row}` } }}
+                    onCommit={(amount) =>
+                      edit(c.id, 'Edit component amount', (draft) => {
+                        draft.amount = amount
+                      })
+                    }
+                  />
+                </TableCell>
+                {isAdditions && (
                   <TableCell align="center" sx={CONTROL_CELL}>
-                    <IconButton
-                      id={focusIds.removeComponent(c.id)}
-                      aria-label={`Remove ${row}`}
+                    <Checkbox
+                      checked={Boolean(c.paidByCounterparty)}
                       disabled={readOnly}
-                      onClick={() => remove(c.id)}
-                    >
-                      <DeleteOutlined />
-                    </IconButton>
+                      sx={{ p: 1 }}
+                      slotProps={{ input: { 'aria-label': `${paidBy}, ${row}` } }}
+                      onChange={(e) => {
+                        const paid = e.target.checked
+                        const label = `${paid ? 'Mark' : 'Unmark'} as paid by ${partyName(parties, 'counterparty')}`
+                        edit(c.id, label, (draft) => {
+                          draft.paidByCounterparty = paid
+                        })
+                      }}
+                    />
                   </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-          <TableFooter sx={{ '& td, & th': { color: 'text.primary', fontSize: 'body1.fontSize', fontWeight: 500 } }}>
+                )}
+                <TableCell align="center" sx={CONTROL_CELL}>
+                  <IconButton
+                    id={focusIds.removeComponent(c.id)}
+                    aria-label={`Remove ${row}`}
+                    disabled={readOnly}
+                    onClick={() => remove(c.id)}
+                  >
+                    <DeleteOutlined />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            )
+          })}
+          {/* Right under the rows, so adding one more is close to where you're working. */}
+          <TableRow>
+            <TableCell colSpan={isAdditions ? 4 : 3} sx={{ py: 0.5 }}>
+              <Button
+                id={focusIds.addComponent(groupKey)}
+                startIcon={<AddOutlined />}
+                disabled={readOnly}
+                onClick={add}
+              >
+                Add component
+              </Button>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+        <TableFooter sx={{ '& td, & th': { color: 'text.primary', fontSize: 'body1.fontSize', fontWeight: 500 } }}>
+          <TableRow>
+            <TableCell component="th" scope="row">
+              Total {groupLabel.toLowerCase()}
+            </TableCell>
+            <TableCell align="right" sx={AMOUNT_TOTAL_CELL}>
+              {formatTotal(totals.total)}
+            </TableCell>
+            <TableCell colSpan={isAdditions ? 2 : 1} />
+          </TableRow>
+          {isAdditions && (
             <TableRow>
               <TableCell component="th" scope="row">
-                Total {groupLabel.toLowerCase()}
+                {paidBy}
               </TableCell>
               <TableCell align="right" sx={AMOUNT_TOTAL_CELL}>
-                {formatTotal(totals.total)}
+                {formatTotal(totals.paid)}
               </TableCell>
-              <TableCell colSpan={isAdditions ? 2 : 1} />
+              <TableCell colSpan={2} />
             </TableRow>
-            {isAdditions && (
-              <TableRow>
-                <TableCell component="th" scope="row">
-                  {paidBy}
-                </TableCell>
-                <TableCell align="right" sx={AMOUNT_TOTAL_CELL}>
-                  {formatTotal(totals.paid)}
-                </TableCell>
-                <TableCell colSpan={2} />
-              </TableRow>
-            )}
-          </TableFooter>
-        </Table>
-      </Box>
-      <Button id={focusIds.addComponent(groupKey)} startIcon={<AddOutlined />} disabled={readOnly} onClick={add}>
-        Add component
-      </Button>
-    </Stack>
+          )}
+        </TableFooter>
+      </Table>
+    </Box>
   )
 }

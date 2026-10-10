@@ -2,7 +2,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { useId } from 'react'
 import { computeCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
-import { gainOrLoss, unroundedPct } from '../../format/formatters'
+import { unroundedPct } from '../../format/formatters'
 import { useFormatters } from '../../format/useFormatters'
 import { useIssueMessage } from '../../format/useIssueMessage'
 import { useWorkspaceStore } from '../../state/store'
@@ -28,10 +28,10 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
     // Precision and mode only affect the rounded CR, which isn't shown here.
     const cr = computeCR(additions, deductions, 1, 'halfUp').unroundedPct
     const rows: [string, string][] = [
-      ['Total additions', f.currency(additions)],
-      ['Total deductions', f.currency(deductions)],
-      ['Gain or loss', gainOrLoss(gainLoss, f)],
-      [paidByLabel(parties), f.currency(counterpartyPaid)],
+      ['Total additions', f.accountingCurrency(additions)],
+      ['Total deductions', f.accountingCurrency(deductions)],
+      ['Gain (loss)', f.accountingCurrency(gainLoss)],
+      [paidByLabel(parties), f.accountingCurrency(counterpartyPaid)],
       ['Cost ratio', `${unroundedPct(cr, f)} (before rounding)`],
     ]
     content = (
@@ -39,7 +39,16 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
         {rows.map(([term, value]) => (
           <Box key={term} sx={{ display: 'contents' }}>
             <Typography component="dt">{term}</Typography>
-            <Typography component="dd" sx={{ m: 0, textAlign: 'end', fontVariantNumeric: 'tabular-nums' }}>
+            <Typography
+              component="dd"
+              sx={{
+                m: 0,
+                textAlign: 'end',
+                fontVariantNumeric: 'tabular-nums',
+                // A hidden ")" after other amounts lines their digits up with those of a loss in parentheses.
+                '&::after': value.endsWith(')') ? undefined : { content: '")"', visibility: 'hidden' },
+              }}
+            >
               {value}
             </Typography>
           </Box>

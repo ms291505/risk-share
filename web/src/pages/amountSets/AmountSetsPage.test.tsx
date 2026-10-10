@@ -60,7 +60,7 @@ describe('amount sets view (§4)', () => {
     renderAt('/amounts')
     enter('Total additions', '1,000,000')
     enter('Total deductions', '800,500')
-    expect(summaryValue('Gain or loss')).toBe('Gain $199,500.00')
+    expect(summaryValue('Gain (loss)')).toBe('$199,500.00')
     expect(summaryValue('Cost ratio')).toBe('80.05% (before rounding)')
     expect(input('Total additions').value).toBe('1,000,000.00')
     expect(store.getState().past.map((e) => e.label)).toEqual(['Edit total additions', 'Edit total deductions'])

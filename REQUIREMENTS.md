@@ -127,9 +127,12 @@
    instead of results, with the reason. (A new amount set starts at additions
    = 0 and is therefore invalid until filled in.)
 1. The amount set editor shows the totals, the gain or loss, the
-   counterparty-paid amount, and the cost ratio **before rounding** (e.g.
-   "80.05% (before rounding)", to at most 4 decimals and marked ≈ when it has
-   more), since each set of terms rounds it its own way (§5).
+   counterparty-paid amount, and the cost ratio. Amounts are shown
+   accounting style: the gain or loss is labeled "Gain (loss)", and negative
+   amounts are in parentheses in every locale. The cost ratio is shown
+   **before rounding** (e.g. "80.05% (before rounding)", to at most 4
+   decimals and marked ≈ when it has more), since each set of terms rounds
+   it its own way (§5).
 
 ## 5. Cost ratio
 

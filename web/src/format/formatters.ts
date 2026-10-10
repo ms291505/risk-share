@@ -18,6 +18,11 @@ export interface Formatters {
   signedCurrency(x: Num): string
   /** Without a sign, for text that says the direction in words, e.g. "Loss $50,000.00". */
   unsignedCurrency(x: Num): string
+  /**
+   * Negatives in parentheses, e.g. "($50,000.00)", for a value labeled
+   * "Gain (loss)". In every locale, since the label relies on it.
+   */
+  accountingCurrency(x: Num): string
   /** Short form for chart axes, e.g. "$50K". */
   compactCurrency(x: number): string
   /**
@@ -59,6 +64,10 @@ export function makeFormatters(locale: string, currency: string): Formatters {
     currency: (x) => money.format(exact(x)),
     signedCurrency: (x) => signedMoney.format(exact(x)),
     unsignedCurrency: (x) => unsignedMoney.format(exact(x)),
+    accountingCurrency: (x) => {
+      const negative = typeof x === 'number' ? x < 0 : x.lt(0)
+      return negative ? `(${unsignedMoney.format(exact(x))})` : money.format(exact(x))
+    },
     compactCurrency: (x) => compact.format(x),
     // Percent style multiplies by 100; shift the decimal point in the string instead of dividing.
     pct: (x, decimals) =>

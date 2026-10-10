@@ -32,6 +32,14 @@ describe('direction', () => {
   })
 })
 
+describe('accountingCurrency', () => {
+  it('puts losses in parentheses, in every locale', () => {
+    expect(makeFormatters('en-US', 'USD').accountingCurrency(D('-5000.5'))).toBe('($5,000.50)')
+    expect(makeFormatters('en-US', 'USD').accountingCurrency(D('5000.5'))).toBe('$5,000.50')
+    expect(makeFormatters('de-DE', 'EUR').accountingCurrency(D('-5000.5'))).toBe('(5.000,50\u00a0€)')
+  })
+})
+
 describe('gainOrLoss', () => {
   const f = makeFormatters('en-US', 'USD')
   it('says which in words', () => {
