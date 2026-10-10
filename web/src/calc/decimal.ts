@@ -61,6 +61,12 @@ export function toDecimalString(x: Big, dp: number): DecimalString {
   return s === '-0' || /^-0\.0+$/.test(s) ? s.slice(1) : s
 }
 
+/** Exact a − b, with as many decimals as the longer of the two. */
+export function subtractDecimals(a: DecimalString, b: DecimalString): DecimalString {
+  const decimals = (s: string) => s.split('.')[1]?.length ?? 0
+  return toDecimalString(D(a).minus(D(b)), Math.max(decimals(a), decimals(b)))
+}
+
 /**
  * The smallest 1, 2 or 5 × 10ⁿ that is ≥ x (x > 0), for chart steps and axis
  * ticks. Only picks a step size, so a number input is precise enough; the

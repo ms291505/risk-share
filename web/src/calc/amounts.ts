@@ -78,36 +78,13 @@ export function sumComponents(
 }
 
 /**
- * Total additions split into the counterparty-paid part and the rest, for
- * switching to components (§4.3). Null unless both are valid amounts with
- * 0 < paid ≤ total; `rest` is null when the counterparty paid all of it.
- */
-export function splitCounterpartyPaid(
-  total: DecimalString,
-  paid: DecimalString | undefined,
-  minorUnits: number,
-): { paid: DecimalString; rest: DecimalString | null } | null {
-  const t = parseAmount(total, minorUnits, [], [])
-  const p = parseAmount(paid, minorUnits, [], [])
-  if (!t || !p || p.lte(0) || p.gt(t)) return null
-  return { paid: paid!, rest: p.eq(t) ? null : toDecimalString(t.minus(p), minorUnits) }
-}
-
-/**
- * §4.6. In components mode this relies on `groupTotal` over the same
+ * §4.6: the sum of the additions components marked as paid by the
+ * counterparty; zero for a total. Relies on `groupTotal` over the same
  * components to report invalid amounts, so it returns null without an issue.
  */
-function counterpartyPaid(
-  set: AmountSet,
-  minorUnits: number,
-  issues: Issue[],
-  override?: ComponentOverride,
-): Big | null {
+function counterpartyPaid(set: AmountSet, override?: ComponentOverride): Big | null {
   const add = set.additions
-  if (add.mode === 'total') {
-    if (add.paidByCounterparty === undefined || add.paidByCounterparty === '') return ZERO
-    return parseAmount(add.paidByCounterparty, minorUnits, ['additions', 'paidByCounterparty'], issues)
-  }
+  if (add.mode === 'total') return ZERO
   let sum = ZERO
   for (const c of add.components) {
     if (!c.paidByCounterparty) continue
@@ -124,7 +101,7 @@ export function checkTotals(totals: AmountTotals): Issue[] {
   if (totals.additions.lte(0)) {
     issues.push({ code: 'additionsNotPositive', path: ['additions'] })
   } else if (totals.counterpartyPaid.lt(0) || totals.counterpartyPaid.gt(totals.additions)) {
-    issues.push({ code: 'counterpartyPaidOutOfRange', path: ['additions', 'paidByCounterparty'] })
+    issues.push({ code: 'counterpartyPaidOutOfRange', path: ['additions'] })
   }
   return issues
 }
@@ -169,7 +146,7 @@ export function evaluateAmountSet(
     })
   }
 
-  const cp = counterpartyPaid(set, minorUnits, issues, compOverride('additions'))
+  const cp = counterpartyPaid(set, compOverride('additions'))
 
   if (additions === null || deductions === null || cp === null) return { ok: false, issues }
   const totals = makeTotals(additions, deductions, cp)

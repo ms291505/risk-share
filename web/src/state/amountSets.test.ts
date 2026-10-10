@@ -85,7 +85,7 @@ describe('deleting an amount set (§8.6)', () => {
 })
 
 describe('splitIntoComponents (§4.3)', () => {
-  const split = (set: AmountSet, key: 'additions' | 'deductions') => splitIntoComponents(set, key, USD, 'Bob')[key]
+  const split = (set: AmountSet, key: 'additions' | 'deductions') => splitIntoComponents(set, key, USD)[key]
 
   it('starts with one component equal to the total', () => {
     const deductions = split(amounts('1000000', '800500.25'), 'deductions')
@@ -104,30 +104,6 @@ describe('splitIntoComponents (§4.3)', () => {
     set.deductions.components = [component('Old', '1')]
     expect(split(set, 'deductions').components).toMatchObject([{ name: 'Component 1', amount: '50' }])
   })
-
-  it('splits additions to keep the amount paid by the counterparty, named after it', () => {
-    expect(split(amounts('1000000', '0', '250000.50'), 'additions').components).toMatchObject([
-      { name: 'Paid by Bob', amount: '250000.50', paidByCounterparty: true },
-      { name: 'Other additions', amount: '749999.50' },
-    ])
-  })
-
-  it('marks the one component when the counterparty paid all of it', () => {
-    expect(split(amounts('1000', '0', '1000'), 'additions').components).toMatchObject([
-      { name: 'Paid by Bob', amount: '1000', paidByCounterparty: true },
-    ])
-  })
-
-  it.each([
-    ['blank', undefined],
-    ['zero', '0'],
-    ['more than the total', '2000'],
-    ['unreadable', 'x'],
-  ])('ignores a counterparty-paid amount that is %s', (_, paid) => {
-    expect(split(amounts('1000', '0', paid), 'additions').components).toMatchObject([
-      { name: 'Component 1', amount: '1000' },
-    ])
-  })
 })
 
 describe('replaceComponentsWithTotal (§4.3)', () => {
@@ -145,19 +121,12 @@ describe('replaceComponentsWithTotal (§4.3)', () => {
     expect(replaceComponentsWithTotal(set, 'deductions', USD).deductions.total).toBe('')
   })
 
-  it('totals the components marked as paid by the counterparty (§4.6)', () => {
+  it('drops what the marked components recorded as paid by the counterparty (§4.6)', () => {
     const set = withComponents('additions', [component('Premiums', '800000', true), component('Other', '200000')])
-    expect(replaceComponentsWithTotal(set, 'additions', USD).additions).toMatchObject({
+    expect(replaceComponentsWithTotal(set, 'additions', USD).additions).toEqual({
       mode: 'total',
       total: '1000000.00',
       components: [],
-      paidByCounterparty: '800000.00',
     })
-  })
-
-  it('leaves the counterparty-paid amount blank when nothing is marked', () => {
-    const set = withComponents('additions', [component('Other', '200000')])
-    set.additions.paidByCounterparty = '5'
-    expect(replaceComponentsWithTotal(set, 'additions', USD).additions.paidByCounterparty).toBeUndefined()
   })
 })

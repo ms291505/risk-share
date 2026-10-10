@@ -1,6 +1,14 @@
 // Pure calculation core: no React or DOM dependencies.
 export type * from './types'
-export { D, parseDecimal, isDecimalString, toDecimalString, roundToMinor, niceStep } from './decimal'
+export {
+  D,
+  parseDecimal,
+  isDecimalString,
+  toDecimalString,
+  subtractDecimals,
+  roundToMinor,
+  niceStep,
+} from './decimal'
 export { minorUnits } from './currency'
 export { isInvalid } from './result'
 export { activeSides, defaultTierName } from './terms'
@@ -8,7 +16,6 @@ export {
   evaluateAmountSet,
   parseAmount,
   sumComponents,
-  splitCounterpartyPaid,
   type AmountOverride,
   type AmountResult,
 } from './amounts'

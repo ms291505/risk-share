@@ -25,7 +25,7 @@ describe('currency change (§2.3)', () => {
     const t = terms('gain', { gain: side([['100.25', '50']], { maxPayout: '10' }) }, { unit: 'currency' })
     expect(previewCurrencyChange(0, { amountSets: [set], terms: [t], sweeps: [sweep] })).toEqual({ rounded: 7 })
     const r = rescaleAmountSet(set, 0)
-    expect([r.additions.total, r.deductions.total, r.additions.paidByCounterparty]).toEqual(['1001', '999', '1'])
+    expect([r.additions.total, r.deductions.total, r.additions.components[0].amount]).toEqual(['1001', '999', '1'])
     expect(r.deductions.components[0].amount).toBe('1')
     const rt = rescaleTerms(t, 0)
     expect([rt.gain!.tiers[0].threshold, rt.gain!.limits.maxPayout]).toEqual(['100', '10'])
@@ -46,7 +46,7 @@ describe('currency change (§2.3)', () => {
     const set = amounts('1000', '999', '5')
     expect(previewCurrencyChange(2, { amountSets: [set] })).toEqual({ rounded: 0 })
     const r = rescaleAmountSet(set, 2)
-    expect([r.additions.total, r.deductions.total, r.additions.paidByCounterparty]).toEqual([
+    expect([r.additions.total, r.deductions.total, r.additions.components[0].amount]).toEqual([
       '1000.00', '999.00', '5.00',
     ])
   })

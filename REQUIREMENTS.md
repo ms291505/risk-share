@@ -94,16 +94,14 @@
    or enter named components that sum to it. Additions and deductions each
    choose their mode independently.
    - Splitting a total into components starts with one component equal to
-     the total. For additions with a counterparty-paid amount (§4.6), that
-     amount becomes its own marked component, "Paid by ‹counterparty›", and
-     any rest becomes "Other additions", so both numbers are kept.
+     the total.
    - Components show their total below them (and for additions, the amount
      paid by the counterparty), as well as in the amount set's summary.
    - Going back from components to a total is a deliberate reset: after a
      confirmation, the components are removed, and the total starts at their
-     sum (blank if an amount can't be read). For additions, the
-     counterparty-paid amount starts at the sum of the marked components
-     (blank if none are marked). This can be undone.
+     sum (blank if an amount can't be read). A total has no
+     counterparty-paid amount (§4.6), so the confirmation says what the
+     marked components recorded will be dropped. This can be undone.
    - Components are never kept hidden to be restored later. Components
      stored alongside a total (possible in imported files) are inactive: they
      aren't used in calculations or offered as a sweep variable (§9.2), and
@@ -114,11 +112,11 @@
 1. **Paid by counterparty.** Part of the additions may be paid by the
    counterparty (e.g. premiums or fees Bob pays Lisa). The rest is treated as
    third-party revenue. This amount is used only for net position (§7).
-   - With components: each addition component can be marked *paid by
-     counterparty*; the amount is the sum of marked components. (This is a
-     per-component checkbox, not a scenario tag; see §8.2.)
-   - With a total only: an optional *paid by counterparty* amount field
-     (must be ≤ total additions).
+   - It's recorded only with components: each addition component can be
+     marked *paid by ‹counterparty›*, and the amount is the sum of the
+     marked components. (This is a per-component checkbox, not a scenario
+     tag; see §8.2.) Additions entered as a total have no counterparty-paid
+     amount; to record one, split them into components.
    - The counterparty-paid amount must be between 0 and total additions.
    - If it is zero, the counterparty's net position shows a hint that no
      counterparty-paid additions have been entered.

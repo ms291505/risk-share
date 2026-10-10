@@ -1,6 +1,6 @@
 import type { AmountSet, Parties, SweepSpec, Terms } from '../calc'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export interface WorkspaceSettings {
   /** ISO 4217 code; one currency per workspace (§2.2). */

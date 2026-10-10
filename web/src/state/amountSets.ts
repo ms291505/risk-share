@@ -1,8 +1,6 @@
 import {
   parseAmount,
-  splitCounterpartyPaid,
   sumComponents,
-  type AdditionsGroup,
   type AmountComponent,
   type AmountGroup,
   type AmountSet,
@@ -74,30 +72,22 @@ export function deleteAmountSet(workspace: Workspace, id: string): void {
 }
 
 /**
- * Turns a total into components (§4.3): one equal to the total, or for
- * additions with an amount paid by the counterparty, that amount as its own
- * marked component plus the rest, so both numbers are kept. Any components
- * stored alongside the total (only imported files have them) are replaced.
+ * Turns a total into components (§4.3), starting with one equal to the
+ * total. Any components stored alongside the total (only imported files
+ * have them) are replaced.
  */
-export function splitIntoComponents(
-  set: AmountSet,
-  key: GroupKey,
-  minorUnits: number,
-  counterparty: string,
-): AmountSet {
+export function splitIntoComponents(set: AmountSet, key: GroupKey, minorUnits: number): AmountSet {
   const group = set[key]
   if (group.mode === 'components') return set
-  const components =
-    key === 'additions'
-      ? splitAdditions(set.additions, minorUnits, counterparty)
-      : [totalComponent(group.total, minorUnits)]
-  return { ...set, [key]: { ...group, mode: 'components', components } }
+  const readable = parseAmount(group.total, minorUnits, [], []) !== null
+  const component = { id: newId(), name: 'Component 1', amount: readable ? group.total : '' }
+  return { ...set, [key]: { ...group, mode: 'components', components: [component] } }
 }
 
 export interface ComponentTotals {
   /** Null if an amount can't be read. */
   total: DecimalString | null
-  /** The components marked as paid by the counterparty (additions only). */
+  /** The components marked as paid by the counterparty (additions only, §4.6). */
   paid: DecimalString | null
 }
 
@@ -107,27 +97,11 @@ export function componentTotals(group: AmountGroup, minorUnits: number): Compone
 }
 
 /**
- * Removes the components and uses their sum as the total (§4.3), blank if
- * it can't be worked out. For additions, the counterparty-paid amount becomes
- * the sum of the marked components, or blank if none are marked.
+ * Removes the components and uses their sum as the total (§4.3), blank if it
+ * can't be worked out. A total has no counterparty-paid amount (§4.6), so
+ * what the marked components recorded is dropped.
  */
 export function replaceComponentsWithTotal(set: AmountSet, key: GroupKey, minorUnits: number): AmountSet {
-  const { total, paid } = componentTotals(set[key], minorUnits)
-  const group = { ...set[key], mode: 'total' as const, total: total ?? '', components: [] }
-  if (key === 'deductions') return { ...set, deductions: group }
-  const anyMarked = set.additions.components.some((c) => c.paidByCounterparty)
-  return { ...set, additions: { ...group, paidByCounterparty: anyMarked ? (paid ?? '') : undefined } }
-}
-
-/** The total as one component, blank if it can't be read. */
-function totalComponent(total: string, minorUnits: number): AmountComponent {
-  const readable = parseAmount(total, minorUnits, [], []) !== null
-  return { id: newId(), name: 'Component 1', amount: readable ? total : '' }
-}
-
-function splitAdditions(additions: AdditionsGroup, minorUnits: number, counterparty: string): AmountComponent[] {
-  const split = splitCounterpartyPaid(additions.total, additions.paidByCounterparty, minorUnits)
-  if (!split) return [totalComponent(additions.total, minorUnits)]
-  const paid = { id: newId(), name: `Paid by ${counterparty}`, amount: split.paid, paidByCounterparty: true }
-  return split.rest === null ? [paid] : [paid, { id: newId(), name: 'Other additions', amount: split.rest }]
+  const total = componentTotals(set[key], minorUnits).total ?? ''
+  return { ...set, [key]: { mode: 'total', total, components: [] } }
 }

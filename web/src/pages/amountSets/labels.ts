@@ -21,11 +21,10 @@ export function issueAt(issues: Issue[], ...path: string[]): Issue | undefined {
  * The field an issue is on, for listing it away from the fields, e.g.
  * "Deductions, Claims". Null for an issue about a whole group.
  */
-export function issueField(set: AmountSet, issue: Issue, parties: Parties): string | null {
+export function issueField(set: AmountSet, issue: Issue): string | null {
   const [key, field, componentId] = issue.path as [GroupKey | undefined, string | undefined, string | undefined]
   if (!key || !field) return null
   if (field === 'total') return `Total ${GROUP_LABELS[key].toLowerCase()}`
-  if (field === 'paidByCounterparty') return paidByLabel(parties)
   const components = set[key].components
   const index = components.findIndex((c) => c.id === componentId)
   return index < 0 ? null : `${GROUP_LABELS[key]}, ${componentLabel(components[index], index)}`

@@ -117,18 +117,20 @@ describe('amount sets view (§4)', () => {
     expect(input('Total deductions').value).toBe('900,000.00')
   })
 
-  it('names the counterparty in what it paid (§3.2, §4.6)', () => {
-    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0', '250')], parties: LISA_AND_BOB }))
+  it('records what the counterparty paid only in components, by its name (§3.2, §4.6)', () => {
+    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0')], parties: LISA_AND_BOB }))
     renderAt('/amounts')
-    expect(input('Paid by Bob (optional)').value).toBe('250.00')
+    expect(screen.queryByRole('textbox', { name: /Paid by/ })).toBeNull()
+    expect(summaryValue('Paid by Bob')).toBe('$0.00')
+
     fireEvent.click(within(section('Additions')).getByRole('button', { name: 'Split into components' }))
-    const paid = screen.getByRole('checkbox', { name: 'Paid by Bob, Paid by Bob' }) as HTMLInputElement
-    const other = screen.getByRole('checkbox', { name: 'Paid by Bob, Other additions' }) as HTMLInputElement
-    expect([paid.checked, other.checked]).toEqual([true, false])
-    fireEvent.click(other)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Paid by Bob, Component 1' }))
     expect(footerValue('Paid by Bob')).toBe('$1,000.00')
     expect(summaryValue('Paid by Bob')).toBe('$1,000.00')
     expect(store.getState().past.at(-1)?.label).toBe('Mark as paid by Bob')
+
+    fireEvent.click(within(section('Additions')).getByRole('button', { name: 'Use a total instead…' }))
+    expect(screen.getByRole('dialog').textContent).toContain("The $1,000.00 marked as paid by Bob won't be kept")
   })
 
   it('duplicates a set right after the original, and opens it', () => {

@@ -19,7 +19,7 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
   const message = useIssueMessage()
   const headingId = useId()
   const describe = (issue: Issue) => {
-    const field = issueField(set, issue, parties)
+    const field = issueField(set, issue)
     return field ? `${field}: ${message(issue)}` : message(issue)
   }
   let content

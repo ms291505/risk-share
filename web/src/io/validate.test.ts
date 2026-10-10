@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import fixture from './__fixtures__/v1.json'
+import fixture from './__fixtures__/v2.json'
 import { validateWorkspace, type LoadProblem } from './validate'
 
 type Doc = Record<string, any>
 
-/** The v1 fixture without its version fields, as `parse` hands it to the validator, with an edit applied. */
+/** The current fixture without its version fields, as `parse` hands it to the validator, with an edit applied. */
 function edited(edit: (doc: Doc) => void): Doc {
   const { schemaVersion: _v, appVersion: _a, ...doc } = structuredClone(fixture) as Doc
   edit(doc)

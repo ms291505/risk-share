@@ -15,7 +15,7 @@ export interface UseTotalPreview extends ComponentTotals {
   /** "additions" or "deductions". */
   group: string
   count: number
-  /** The counterparty's name, when some additions are marked as paid by it. */
+  /** The counterparty's name, when some additions are marked as paid by it, which a total can't record. */
   paidBy: string | null
 }
 
@@ -43,7 +43,10 @@ export function UseTotalDialog({ preview, onConfirm, onCancel, onExited }: Props
       shown.total === null
         ? `Remove ${components} and enter a total instead? Some amounts can't be read, so the total starts blank.`
         : `Remove ${components} and use a total of ${money(shown.total)} instead?`
-    if (shown.paidBy && shown.paid !== null) text += ` The amount paid by ${shown.paidBy} will be ${money(shown.paid)}.`
+    if (shown.paidBy) {
+      const paid = shown.paid === null ? 'The amount' : `The ${money(shown.paid)}`
+      text += ` ${paid} marked as paid by ${shown.paidBy} won't be kept: only components record it.`
+    }
     text += ' You can undo this.'
   }
 

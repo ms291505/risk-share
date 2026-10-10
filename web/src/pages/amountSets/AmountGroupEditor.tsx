@@ -12,7 +12,7 @@ import { partyName } from '../../state/parties'
 import { useWorkspaceStore } from '../../state/store'
 import { ComponentsTable } from './ComponentsTable'
 import { focusById, focusIds } from './focus'
-import { GROUP_LABELS, issueAt, paidByLabel } from './labels'
+import { GROUP_LABELS, issueAt } from './labels'
 import { updateAmountSet, updateGroup } from './updateAmountSet'
 import { UseTotalDialog, type UseTotalPreview } from './UseTotalDialog'
 
@@ -40,13 +40,10 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
   const group = set[groupKey]
   const label = GROUP_LABELS[groupKey]
   const lower = label.toLowerCase()
-  // Components mode has no counterparty-paid field, so its range error goes on the section.
-  const sectionIssue =
-    issueAt(issues, groupKey) ??
-    (group.mode === 'components' ? issueAt(issues, groupKey, 'paidByCounterparty') : undefined)
+  const sectionIssue = issueAt(issues, groupKey)
 
   const split = () => {
-    const next = splitIntoComponents(set, groupKey, minor, partyName(parties, 'counterparty'))
+    const next = splitIntoComponents(set, groupKey, minor)
     flushSync(() => updateAmountSet(set.id, `Split ${lower} into components`, () => next))
     focusById(focusIds.componentName(next[groupKey].components[0].id))
   }
@@ -94,7 +91,7 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
         </Typography>
       )}
       {group.mode === 'total' ? (
-        <TotalFields set={set} groupKey={groupKey} issues={issues} />
+        <TotalField set={set} groupKey={groupKey} issues={issues} />
       ) : (
         <ComponentsTable set={set} groupKey={groupKey} issues={issues} />
       )}
@@ -112,42 +109,25 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
   )
 }
 
-function TotalFields({ set, groupKey, issues }: Props) {
-  const parties = useWorkspaceStore((s) => s.workspace.parties)
+function TotalField({ set, groupKey, issues }: Props) {
   const message = useIssueMessage()
-  const isAdditions = groupKey === 'additions'
   const label = `Total ${GROUP_LABELS[groupKey].toLowerCase()}`
-  const totalIssue = issueAt(issues, groupKey, 'total')
-  const paidIssue = issueAt(issues, 'additions', 'paidByCounterparty')
+  const issue = issueAt(issues, groupKey, 'total')
   return (
-    <Stack spacing={2} sx={{ maxWidth: 360 }}>
-      <NumberField
-        id={focusIds.total(groupKey)}
-        kind="currency"
-        label={label}
-        value={set[groupKey].total}
-        // Total additions must be positive (§4.5).
-        allowNegative={!isAdditions}
-        error={totalIssue ? message(totalIssue) : null}
-        onCommit={(total) =>
-          updateGroup(set.id, groupKey, `Edit ${label.toLowerCase()}`, (g) => {
-            g.total = total
-          })
-        }
-      />
-      {isAdditions && (
-        <NumberField
-          kind="currency"
-          label={`${paidByLabel(parties)} (optional)`}
-          value={set.additions.paidByCounterparty ?? ''}
-          error={paidIssue ? message(paidIssue) : null}
-          onCommit={(paid) =>
-            updateAmountSet(set.id, `Edit amount paid by ${partyName(parties, 'counterparty')}`, (s) => {
-              s.additions.paidByCounterparty = paid
-            })
-          }
-        />
-      )}
-    </Stack>
+    <NumberField
+      id={focusIds.total(groupKey)}
+      kind="currency"
+      label={label}
+      value={set[groupKey].total}
+      // Total additions must be positive (§4.5).
+      allowNegative={groupKey === 'deductions'}
+      error={issue ? message(issue) : null}
+      onCommit={(total) =>
+        updateGroup(set.id, groupKey, `Edit ${label.toLowerCase()}`, (g) => {
+          g.total = total
+        })
+      }
+      sx={{ maxWidth: 360 }}
+    />
   )
 }
