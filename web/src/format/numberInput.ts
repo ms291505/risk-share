@@ -5,6 +5,8 @@ export interface NumberInputOptions {
   locale: string
   /** ISO 4217 code: its symbol or code may surround the number, e.g. pasted "$1,000.00". */
   currency?: string
+  /** A percent sign may surround the number, e.g. "85%". */
+  percent?: boolean
 }
 
 export type ParsedNumber = { ok: true; value: DecimalString | '' } | { ok: false; issue: Issue }
@@ -15,19 +17,22 @@ interface LocaleSymbols {
   minusSigns: string[]
   /** Native digits 0–9, e.g. Arabic-Indic. */
   digits: string[]
-  /** Longest first, so "US$" is matched before "$". */
-  currencyMarks: string[]
+  /** Currency or percent signs allowed around the number, longest first so "US$" is matched before "$". */
+  unitMarks: string[]
 }
 
-const SPACES = /[   ]/g
-const APOSTROPHES = /['’]/g
-/** Bidi marks some locales put around numbers. */
-const BIDI_MARKS = /[؜‎‏]/g
+/** Space, no-break space and narrow no-break space. */
+const SPACES = /[ \u00A0\u202F]/g
+const APOSTROPHES = /['\u2019]/g
+/** Bidi marks some locales put around numbers: Arabic letter mark, left-to-right and right-to-left marks. */
+const BIDI_MARKS = /[\u061C\u200E\u200F]/g
+/** The most decimals Intl.NumberFormat can show. */
+const MAX_INTL_DECIMALS = 100
 
 const symbolCache = new Map<string, LocaleSymbols>()
 
-function localeSymbols(locale: string, currency = ''): LocaleSymbols {
-  const key = `${locale}|${currency}`
+function localeSymbols(locale: string, currency = '', percent = false): LocaleSymbols {
+  const key = `${locale}|${currency}|${percent}`
   const cached = symbolCache.get(key)
   if (cached) return cached
   const part = (type: Intl.NumberFormatPartTypes) =>
@@ -37,16 +42,18 @@ function localeSymbols(locale: string, currency = ''): LocaleSymbols {
     new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay })
       .formatToParts(1)
       .find((p) => p.type === 'currency')?.value ?? ''
+  const percentSign = () =>
+    new Intl.NumberFormat(locale, { style: 'percent' }).formatToParts(1).find((p) => p.type === 'percentSign')?.value
+  const marks = [
+    ...(currency ? [currencyMark('symbol'), currencyMark('narrowSymbol'), currency] : []),
+    ...(percent ? [percentSign(), '%'] : []),
+  ]
   const symbols: LocaleSymbols = {
     decimal: part('decimal'),
     group: part('group'),
-    minusSigns: [...new Set(['-', '−', part('minusSign')])],
+    minusSigns: [...new Set(['-', '\u2212', part('minusSign')])],
     digits: Array.from({ length: 10 }, (_, d) => plain.format(d)),
-    currencyMarks: currency
-      ? [...new Set([currencyMark('symbol'), currencyMark('narrowSymbol'), currency])]
-          .filter(Boolean)
-          .sort((a, b) => b.length - a.length)
-      : [],
+    unitMarks: [...new Set(marks)].filter((m): m is string => Boolean(m)).sort((a, b) => b.length - a.length),
   }
   symbolCache.set(key, symbols)
   return symbols
@@ -66,21 +73,21 @@ function unreadable(locale: string): ParsedNumber {
  * could be read more than one way is an error rather than a guess: grouping
  * must be exactly the locale's, so "1.5" in de-DE and "1,00" in en-US are
  * rejected, though "1000" without grouping is always fine. Also accepts the
- * workspace currency's symbol or code, accounting negatives "(5,000)" and the
- * Unicode minus "−". Decimals are kept as typed; checking them against the
+ * workspace currency's symbol or code (or a percent sign), accounting
+ * negatives "(5,000)" and the Unicode minus "−". Decimals are kept as typed; checking them against the
  * currency's minor unit is left to calc (§2.5).
  */
-export function parseNumberInput(text: string, { locale, currency }: NumberInputOptions): ParsedNumber {
-  const sym = localeSymbols(locale, currency)
+export function parseNumberInput(text: string, { locale, currency, percent }: NumberInputOptions): ParsedNumber {
+  const sym = localeSymbols(locale, currency, percent)
   let s = text.replace(BIDI_MARKS, '').trim()
   if (s === '') return { ok: true, value: '' }
 
-  let hasCurrency = false
-  const dropCurrency = () => {
-    if (hasCurrency) return
-    const mark = sym.currencyMarks.find((m) => s.startsWith(m) || s.endsWith(m))
+  let hasUnit = false
+  const dropUnit = () => {
+    if (hasUnit) return
+    const mark = sym.unitMarks.find((m) => s.startsWith(m) || s.endsWith(m))
     if (!mark) return
-    hasCurrency = true
+    hasUnit = true
     s = (s.startsWith(mark) ? s.slice(mark.length) : s.slice(0, -mark.length)).trim()
   }
 
@@ -90,18 +97,18 @@ export function parseNumberInput(text: string, { locale, currency }: NumberInput
     negative = true
     s = inParens[1].trim()
   }
-  dropCurrency() // "$-5", "5 $", "($5)"
+  dropUnit() // "$-5", "5 $", "($5)"
   const minus = sym.minusSigns.find((m) => s.startsWith(m))
   if (minus) {
     if (negative) return unreadable(locale)
     negative = true
     s = s.slice(minus.length).trim()
   }
-  dropCurrency() // "-$5"
+  dropUnit() // "-$5"
 
   // Spaces and apostrophes look alike, and browsers disagree on which one a locale uses.
   if (/^\s$/.test(sym.group)) s = s.replace(SPACES, sym.group)
-  else if (sym.group === "'" || sym.group === '’') s = s.replace(APOSTROPHES, sym.group)
+  else if (sym.group === "'" || sym.group === '\u2019') s = s.replace(APOSTROPHES, sym.group)
   s = toAsciiDigits(s, sym.digits)
 
   const parts = s.split(sym.decimal)
@@ -138,11 +145,13 @@ export interface FormatNumberInputOptions {
  * The text a number field shows for a stored value: grouped, with at least
  * `minFractionDigits` decimals and never fewer than the value has, so extra
  * decimals stay visible. Exact, like `makeFormatters`. A value that isn't a
- * decimal string (e.g. from an imported file) is shown unchanged.
+ * decimal string (e.g. from an imported file), or has more decimals than
+ * Intl can show, is shown unchanged.
  */
 export function formatNumberInput(value: string, { locale, minFractionDigits }: FormatNumberInputOptions): string {
   if (!isDecimalString(value)) return value
   const decimals = Math.max(minFractionDigits, value.split('.')[1]?.length ?? 0)
+  if (decimals > MAX_INTL_DECIMALS) return value
   return new Intl.NumberFormat(locale, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(
     value as `${number}`,
   )

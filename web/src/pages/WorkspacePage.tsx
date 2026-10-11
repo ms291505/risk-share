@@ -1,15 +1,13 @@
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import type { PartyRole } from '../calc'
 import { CommitTextField } from '../components/CommitTextField'
 import { useIssueMessage } from '../format/useIssueMessage'
 import { normalizeName } from '../state/names'
-import { partyNameIssues, ROLE_LABELS } from '../state/parties'
+import { PARTY_ROLES, ROLE_LABELS } from '../format/parties'
+import { partyNameIssues } from '../state/parties'
 import { useWorkspaceStore } from '../state/store'
 import { ComingSoon } from '../components/ComingSoon'
 import { Page } from './Page'
-
-const ROLES: PartyRole[] = ['riskBearer', 'counterparty']
 
 export function WorkspacePage() {
   const settings = useWorkspaceStore((s) => s.workspace.settings)
@@ -24,7 +22,7 @@ export function WorkspacePage() {
         <Typography id="parties-heading" variant="h6" component="h2">
           Parties
         </Typography>
-        {ROLES.map((role) => {
+        {PARTY_ROLES.map((role) => {
           const label = ROLE_LABELS[role]
           const issue = issues.find((i) => i.path[0] === role)
           return (

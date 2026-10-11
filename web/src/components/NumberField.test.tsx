@@ -78,14 +78,26 @@ describe('NumberField (§2.4, §12.5)', () => {
     act(() => useWorkspaceStore.getState().setReadOnly(false))
   })
 
-  it('uses the decimal keypad only when negatives are not allowed', () => {
-    expect(setup().input.inputMode).toBe('decimal')
+  it('uses the decimal keypad only when asked, since it has no minus key', () => {
+    expect(setup().input.inputMode).toBe('')
     cleanup()
-    expect(setup({ allowNegative: true }).input.inputMode).toBe('')
+    expect(setup({ decimalKeypad: true }).input.inputMode).toBe('decimal')
   })
 
-  it('shows percentages', () => {
-    setup({ kind: 'percent', value: '85.5' })
-    expect(screen.getByRole('textbox', { description: 'percent' })).toHaveProperty('value', '85.5')
+  it('links the error only while one is showing', () => {
+    const { input, type } = setup()
+    expect(input.getAttribute('aria-describedby')).not.toContain('helper-text')
+    type('abc')
+    fireEvent.blur(input)
+    expect(input.getAttribute('aria-describedby')).toContain('helper-text')
+  })
+
+  it('shows percentages, and accepts a typed percent sign', () => {
+    const { onCommit, input, type } = setup({ kind: 'percent', value: '85.5' })
+    expect(screen.getByRole('textbox', { description: 'percent' })).toBe(input)
+    expect(input.value).toBe('85.5')
+    type('90%')
+    fireEvent.blur(input)
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith('90')
   })
 })

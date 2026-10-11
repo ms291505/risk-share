@@ -13,7 +13,10 @@ export function expectOk<T extends { ok: true } | Invalid>(r: T): Exclude<T, Inv
   return r as Exclude<T, Invalid>
 }
 
-/** Totals; with `paidByCounterparty`, additions are components: that amount (marked) and the rest (§4.6). */
+/**
+ * Total-mode amounts. With `paidByCounterparty`, additions are split into a
+ * marked component and the rest, since a total can't record it (§4.6).
+ */
 export function amounts(additions: string, deductions: string, paidByCounterparty?: string): AmountSet {
   return {
     id: id(),

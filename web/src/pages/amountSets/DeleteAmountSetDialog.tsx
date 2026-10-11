@@ -39,7 +39,10 @@ export function DeleteAmountSetDialog({ target, onDelete, onCancel, onExited }: 
       aria-labelledby={titleId}
       slotProps={{ transition: { onExited } }}
     >
-      <DialogTitle id={titleId}>Delete “{shown?.set.name}”?</DialogTitle>
+      {/* Names are up to 80 characters, possibly without spaces. */}
+      <DialogTitle id={titleId} sx={{ overflowWrap: 'anywhere' }}>
+        Delete “{shown?.set.name}”?
+      </DialogTitle>
       <DialogContent>
         {scenarios.length > 0 && (
           <>
@@ -76,7 +79,7 @@ export function DeleteAmountSetDialog({ target, onDelete, onCancel, onExited }: 
 function NameList({ names }: { names: string[] }) {
   const more = names.length - MAX_LISTED
   return (
-    <Typography component="ul" variant="body2" sx={{ mt: 0.5, mb: 2 }}>
+    <Typography component="ul" variant="body2" sx={{ mt: 0.5, mb: 2, overflowWrap: 'anywhere' }}>
       {names.slice(0, MAX_LISTED).map((name, i) => (
         <li key={i}>{name}</li>
       ))}

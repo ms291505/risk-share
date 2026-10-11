@@ -1,11 +1,5 @@
-import {
-  parseAmount,
-  sumComponents,
-  type AmountComponent,
-  type AmountGroup,
-  type AmountSet,
-  type DecimalString,
-} from '../calc'
+import { sumComponents, type AmountComponent, type AmountGroup, type AmountSet, type DecimalString } from '../calc'
+import { withSuffix } from './names'
 import type { SavedSweep, Scenario, Workspace } from './workspace'
 
 export type GroupKey = 'additions' | 'deductions'
@@ -36,7 +30,7 @@ export function duplicateAmountSet(set: AmountSet): AmountSet {
   return {
     ...set,
     id: newId(),
-    name: `${set.name} (copy)`,
+    name: withSuffix(set.name, ' (copy)'),
     additions: { ...set.additions, components: copyComponents(set.additions.components) },
     deductions: { ...set.deductions, components: copyComponents(set.deductions.components) },
   }
@@ -72,15 +66,15 @@ export function deleteAmountSet(workspace: Workspace, id: string): void {
 }
 
 /**
- * Turns a total into components (§4.3), starting with one equal to the
- * total. Any components stored alongside the total (only imported files
+ * Turns a total into components (§4.3), starting with one that holds the
+ * total exactly as entered, so a total that can't be read keeps its text and
+ * its error. Any components stored alongside the total (only imported files
  * have them) are replaced.
  */
-export function splitIntoComponents(set: AmountSet, key: GroupKey, minorUnits: number): AmountSet {
+export function splitIntoComponents(set: AmountSet, key: GroupKey): AmountSet {
   const group = set[key]
   if (group.mode === 'components') return set
-  const readable = parseAmount(group.total, minorUnits, [], []) !== null
-  const component = { id: newId(), name: 'Component 1', amount: readable ? group.total : '' }
+  const component = { ...newComponent([]), amount: group.total }
   return { ...set, [key]: { ...group, mode: 'components', components: [component] } }
 }
 

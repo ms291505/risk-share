@@ -13,14 +13,15 @@ import TableRow from '@mui/material/TableRow'
 import type { Draft } from 'immer'
 import { flushSync } from 'react-dom'
 import { D, minorUnits, type AmountComponent, type AmountSet, type DecimalString, type Issue } from '../../calc'
+import { AccountingAmount } from '../../components/AccountingAmount'
 import { CommitTextField } from '../../components/CommitTextField'
 import { NumberField } from '../../components/NumberField'
+import { truncated } from '../../components/truncated'
 import { visuallyHidden } from '../../components/visuallyHidden'
-import { useFormatters } from '../../format/useFormatters'
 import { useIssueMessage } from '../../format/useIssueMessage'
 import { componentTotals, newComponent, type GroupKey } from '../../state/amountSets'
 import { nameIssues, normalizeName } from '../../state/names'
-import { partyName } from '../../state/parties'
+import { partyName } from '../../format/parties'
 import { useWorkspaceStore } from '../../state/store'
 import { focusById, focusIds } from './focus'
 import { componentLabel, GROUP_LABELS, issueAt, paidByLabel } from './labels'
@@ -44,14 +45,19 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
   const readOnly = useWorkspaceStore((s) => s.readOnly)
   const parties = useWorkspaceStore((s) => s.workspace.parties)
   const currency = useWorkspaceStore((s) => s.workspace.settings.currency)
-  const f = useFormatters()
   const message = useIssueMessage()
   const isAdditions = groupKey === 'additions'
   const { components } = set[groupKey]
   const groupLabel = GROUP_LABELS[groupKey]
   const paidBy = paidByLabel(parties)
   const totals = componentTotals(set[groupKey], minorUnits(currency))
-  const formatTotal = (x: DecimalString | null) => (x === null ? '—' : f.currency(D(x)))
+  const total = (x: DecimalString | null) => (x === null ? '—' : <AccountingAmount value={D(x)} />)
+  // A long counterparty name would wrap these to several lines.
+  const paidByText = (
+    <Box component="span" title={paidBy} sx={{ ...truncated, maxWidth: 200 }}>
+      {paidBy}
+    </Box>
+  )
 
   const edit = (id: string, label: string, recipe: (component: Draft<AmountComponent>) => void) =>
     updateGroup(set.id, groupKey, label, (g) => {
@@ -86,7 +92,7 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
           <TableRow>
             <TableCell>Name</TableCell>
             <TableCell>Amount</TableCell>
-            {isAdditions && <TableCell align="center">{paidBy}</TableCell>}
+            {isAdditions && <TableCell align="center">{paidByText}</TableCell>}
             <TableCell>
               <Box component="span" sx={visuallyHidden}>
                 Remove
@@ -121,8 +127,6 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
                     kind="currency"
                     size="small"
                     fullWidth
-                    // Components may be negative, e.g. rebates (§4.4).
-                    allowNegative
                     value={c.amount}
                     error={amountIssue ? message(amountIssue) : null}
                     slotProps={{ htmlInput: { 'aria-label': `Amount, ${row}` } }}
@@ -163,7 +167,6 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
               </TableRow>
             )
           })}
-          {/* Right under the rows, so adding one more is close to where you're working. */}
           <TableRow>
             <TableCell colSpan={isAdditions ? 4 : 3} sx={{ py: 0.5 }}>
               <Button
@@ -183,17 +186,17 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
               Total {groupLabel.toLowerCase()}
             </TableCell>
             <TableCell align="right" sx={AMOUNT_TOTAL_CELL}>
-              {formatTotal(totals.total)}
+              {total(totals.total)}
             </TableCell>
             <TableCell colSpan={isAdditions ? 2 : 1} />
           </TableRow>
           {isAdditions && (
             <TableRow>
               <TableCell component="th" scope="row">
-                {paidBy}
+                {paidByText}
               </TableCell>
               <TableCell align="right" sx={AMOUNT_TOTAL_CELL}>
-                {formatTotal(totals.paid)}
+                {total(totals.paid)}
               </TableCell>
               <TableCell colSpan={2} />
             </TableRow>

@@ -21,11 +21,11 @@ describe('parseNumberInput (§2.4)', () => {
     ['en-US', '', ''],
     ['de-DE', '1.000,50', '1000.50'],
     ['de-DE', '1000,5', '1000.5'],
-    ['fr-FR', '1 234,56', '1234.56'],
+    ['fr-FR', '1\u202F234,56', '1234.56'],
     ['fr-FR', '1 234,56', '1234.56'],
-    ['fr-FR', '1 234,56', '1234.56'],
+    ['fr-FR', '1\u00A0234,56', '1234.56'],
     ['de-CH', "1'234.56", '1234.56'],
-    ['de-CH', '1’234.56', '1234.56'],
+    ['de-CH', '1\u2019234.56', '1234.56'],
     ['en-IN', '12,34,567.89', '1234567.89'],
     ['ja-JP', '1,234', '1234'],
     ['es-ES', '1.234', '1234'],
@@ -66,8 +66,14 @@ describe('parseNumberInput (§2.4)', () => {
   it('accepts accounting negatives and the Unicode minus', () => {
     expect(value('(5,000)', { locale: 'en-US' })).toBe('-5000')
     expect(value('($5,000.25)', { locale: 'en-US', currency: 'USD' })).toBe('-5000.25')
-    expect(value('−5', { locale: 'en-US' })).toBe('-5')
-    expect(value('−1 234,5', { locale: 'sv-SE' })).toBe('-1234.5')
+    expect(value('\u22125', { locale: 'en-US' })).toBe('-5')
+    expect(value('\u22121\u00A0234,5', { locale: 'sv-SE' })).toBe('-1234.5')
+  })
+
+  it('accepts a percent sign in percent fields only', () => {
+    expect(value('85.5%', { locale: 'en-US', percent: true })).toBe('85.5')
+    expect(value('85,5\u00A0%', { locale: 'de-DE', percent: true })).toBe('85.5')
+    expect(value('85%', { locale: 'en-US' })).toBeNull()
   })
 
   it('keeps extra decimals for calc to report (§2.5)', () => {
@@ -95,6 +101,11 @@ describe('formatNumberInput', () => {
     expect(formatNumberInput('12345678901234567890.12', { locale: 'en-US', minFractionDigits: 2 })).toBe(
       '12,345,678,901,234,567,890.12',
     )
+  })
+
+  it('shows a value with more decimals than Intl can format unchanged', () => {
+    const long = `0.${'1'.repeat(101)}`
+    expect(formatNumberInput(long, { locale: 'en-US', minFractionDigits: 2 })).toBe(long)
   })
 
   it('shows text that is not a number unchanged', () => {

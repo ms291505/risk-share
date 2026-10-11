@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_NAME_LENGTH, nameIssues, sameName } from './names'
+import { MAX_NAME_LENGTH, nameIssues, nameLength, sameName, withSuffix } from './names'
 
 describe('names (§3.3, §8.2)', () => {
   it('rejects empty and overlong names, after trimming', () => {
@@ -20,5 +20,14 @@ describe('names (§3.3, §8.2)', () => {
   it('compares ignoring case and surrounding spaces', () => {
     expect(sameName('Lisa', ' lisa ')).toBe(true)
     expect(sameName('Lisa', 'Lise')).toBe(false)
+  })
+})
+
+describe('withSuffix', () => {
+  it('shortens the name so the result stays within the limit', () => {
+    expect(withSuffix('Budget', ' (copy)')).toBe('Budget (copy)')
+    const result = withSuffix(`${'a'.repeat(70)} ${'b'.repeat(9)}`, ' (copy)')
+    expect(nameLength(result)).toBe(MAX_NAME_LENGTH)
+    expect(withSuffix(`${'a'.repeat(72)} bbbb`, ' (copy)')).toBe(`${'a'.repeat(72)} (copy)`)
   })
 })

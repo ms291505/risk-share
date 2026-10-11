@@ -1,5 +1,5 @@
 import type { Issue, IssueCode, Parties } from '../calc'
-import { partyName } from '../state/parties'
+import { partyName } from './parties'
 
 type Params = NonNullable<Issue['params']>
 

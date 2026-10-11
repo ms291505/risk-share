@@ -11,8 +11,11 @@ export interface NumberFieldProps extends Omit<CommitTextFieldProps, 'value' | '
   onCommit(value: DecimalString | ''): void
   /** Currency amounts show the workspace currency and its minor unit; percentages show "%". */
   kind: 'currency' | 'percent'
-  /** iPad's decimal keypad has no minus key, so fields that take negatives use the full keyboard. */
-  allowNegative?: boolean
+  /**
+   * Shows the decimal keypad on touch devices. It has no minus key, so use
+   * it only where a negative is never valid. Doesn't change what's accepted.
+   */
+  decimalKeypad?: boolean
 }
 
 /**
@@ -20,26 +23,16 @@ export interface NumberFieldProps extends Omit<CommitTextFieldProps, 'value' | '
  * (§12.5). Text that can't be read stays in the field with an inline error
  * and isn't saved; Escape shows the saved value again.
  */
-export function NumberField({
-  value,
-  onCommit,
-  kind,
-  allowNegative = false,
-  id,
-  slotProps,
-  ...props
-}: NumberFieldProps) {
+export function NumberField({ value, onCommit, kind, decimalKeypad = false, slotProps, ...props }: NumberFieldProps) {
   const { locale, currency } = useWorkspaceStore((s) => s.workspace.settings)
   const message = useIssueMessage()
-  const autoId = useId()
-  const fieldId = id ?? autoId
-  const unitId = `${fieldId}-unit`
+  const unitId = useId()
 
   const isCurrency = kind === 'currency'
   const format = (v: string) =>
     formatNumberInput(v, { locale, minFractionDigits: isCurrency ? minorUnits(currency) : 0 })
   const parse = (text: string): ParseResult => {
-    const parsed = parseNumberInput(text, { locale, currency: isCurrency ? currency : undefined })
+    const parsed = parseNumberInput(text, isCurrency ? { locale, currency } : { locale, percent: true })
     return parsed.ok ? parsed : { ok: false, error: message(parsed.issue) }
   }
   const affix = isCurrency ? currencyAffix(locale, currency) : { symbol: '%', position: 'end' as const }
@@ -56,8 +49,8 @@ export function NumberField({
   return (
     <CommitTextField
       {...props}
-      id={fieldId}
       value={format(value)}
+      describedBy={unitId}
       parse={parse}
       // "1000" and "1,000.00" are the same amount; don't add an undo step for it.
       onCommit={(v) => {
@@ -68,11 +61,9 @@ export function NumberField({
         input: { ...slotProps?.input, [`${affix.position}Adornment`]: adornment },
         htmlInput: {
           ...slotProps?.htmlInput,
-          inputMode: allowNegative ? undefined : 'decimal',
+          inputMode: decimalKeypad ? 'decimal' : undefined,
           // Right-aligned, so amounts in a column line up by digit.
           style: { textAlign: 'right' },
-          // Replaces MUI's own description, so it names the helper text (the error) too.
-          'aria-describedby': `${fieldId}-helper-text ${unitId}`,
         },
       }}
     />

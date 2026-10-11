@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 import { amounts } from '../../calc/__fixtures__/builders'
 import { AppProviders } from '../../app/AppProviders'
 import { routes } from '../../app/routes'
 import { useWorkspaceStore } from '../../state/store'
-import { emptyWorkspace, type Scenario, type Workspace } from '../../state/workspace'
+import { emptyWorkspace, type SavedSweep, type Scenario, type Workspace } from '../../state/workspace'
 
 const store = useWorkspaceStore
 
@@ -42,7 +42,10 @@ function workspaceWith(patch: Partial<Workspace>): Workspace {
 
 describe('amount sets view (§4)', () => {
   beforeEach(() => store.getState().load(emptyWorkspace('en-US')))
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
   it('creates a set, ready to name, that needs filling in (§4.7)', () => {
     const router = renderAt('/amounts')
@@ -161,6 +164,56 @@ describe('amount sets view (§4)', () => {
     act(() => store.getState().setReadOnly(false))
   })
 
+  it('disables the components controls in a read-only tab too (§11.1)', () => {
+    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0', '250')] }))
+    renderAt('/amounts')
+    act(() => store.getState().setReadOnly(true))
+    const additions = within(section('Additions'))
+    const buttons = ['Use a total instead…', 'Add component', 'Remove Paid by counterparty', 'Remove Other additions']
+    for (const name of buttons)
+      expect((additions.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+    for (const box of additions.getAllByRole('checkbox')) expect((box as HTMLInputElement).disabled).toBe(true)
+    expect(input('Amount, Other additions').readOnly).toBe(true)
+    act(() => store.getState().setReadOnly(false))
+  })
+
+  it('shows negative totals in parentheses, as in the summary (§4.8)', () => {
+    const set = amounts('1000000', '0')
+    set.deductions = {
+      mode: 'components',
+      total: '0',
+      components: [
+        { id: 'c1', name: 'Claims', amount: '10000' },
+        { id: 'c2', name: 'Rebates', amount: '-25000' },
+      ],
+    }
+    store.getState().load(workspaceWith({ amountSets: [set] }))
+    renderAt('/amounts')
+    expect(footerValue('Total deductions')).toBe('($15,000.00)')
+    expect(summaryValue('Total deductions')).toBe('($15,000.00)')
+    fireEvent.click(within(section('Deductions')).getByRole('button', { name: 'Use a total instead…' }))
+    expect(screen.getByRole('dialog').textContent).toContain('Remove both components and use a total of ($15,000.00)')
+  })
+
+  it('lists sets in a select below md (§1.5)', async () => {
+    vi.stubGlobal('matchMedia', (media: string) => ({
+      matches: true,
+      media,
+      addEventListener() {},
+      removeEventListener() {},
+      addListener() {},
+      removeListener() {},
+    }))
+    const a = { ...amounts('1', '0'), id: 'a', name: 'Actuals' }
+    const b = { ...amounts('0', '0'), id: 'b', name: 'Forecast' }
+    store.getState().load(workspaceWith({ amountSets: [a, b] }))
+    const router = renderAt('/amounts/a')
+    const select = screen.getByRole('combobox', { name: 'Amount set' }) as HTMLSelectElement
+    expect([...select.options].map((o) => o.text)).toEqual(['Actuals — Gain $1.00', 'Forecast — Needs attention'])
+    fireEvent.change(select, { target: { value: 'b' } })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/amounts/b'))
+  })
+
   describe('deleting (§8.6)', () => {
     const scenarios = Array.from({ length: 12 }, (_, i) => ({
       id: `s${i}`,
@@ -200,6 +253,24 @@ describe('amount sets view (§4)', () => {
       undo()
       expect(store.getState().workspace.amountSets.map((s) => s.id)).toEqual(['a', 'b'])
       expect(store.getState().workspace.scenarios).toHaveLength(12)
+    })
+
+    it('deletes the last set, then offers a new one', async () => {
+      const a = { ...amounts('1', '0'), id: 'a', name: 'Actuals' }
+      const sweep = { id: 'w', name: 'Claims sweep', baselineAmountSetId: 'a' } as SavedSweep
+      store.getState().load(workspaceWith({ amountSets: [a], sweeps: [sweep] }))
+      const router = renderAt('/amounts/a')
+      fireEvent.click(screen.getByRole('button', { name: 'Delete…' }))
+      const dialog = screen.getByRole('dialog', { name: 'Delete “Actuals”?' })
+      expect(within(dialog).getByText(/This saved sweep uses it as the baseline/)).toBeDefined()
+      expect(within(dialog).getByRole('listitem').textContent).toBe('Claims sweep')
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+      expect(router.state.location.pathname).toBe('/amounts')
+      expect(store.getState().workspace.sweeps).toEqual([sweep])
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'New amount set' }))
+      expect(screen.getByText('Deleted Actuals.')).toBeDefined()
     })
 
     it('changes nothing when cancelled', () => {

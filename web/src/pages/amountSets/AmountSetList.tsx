@@ -5,15 +5,14 @@ import ListItemButton from '@mui/material/ListItemButton'
 import ListItemText from '@mui/material/ListItemText'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import { useMemo } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { evaluateAmountSet, minorUnits, type AmountSet } from '../../calc'
 import { gainOrLoss, type Formatters } from '../../format/formatters'
 import { useFormatters } from '../../format/useFormatters'
 import { useWorkspaceStore } from '../../state/store'
 import { focusIds } from './focus'
-import { amountSetPath } from './updateAmountSet'
-
-const NEEDS_ATTENTION = 'Needs attention'
+import { amountSetPath } from './paths'
 
 interface Props {
   sets: AmountSet[]
@@ -27,7 +26,10 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
   const currency = useWorkspaceStore((s) => s.workspace.settings.currency)
   const f = useFormatters()
   const navigate = useNavigate()
-  const status = (set: AmountSet) => statusText(set, minorUnits(currency), f)
+  const statuses = useMemo(() => {
+    const minor = minorUnits(currency)
+    return new Map(sets.map((set) => [set.id, status(set, minor, f)]))
+  }, [sets, currency, f])
 
   if (compact) {
     const selected = sets.some((s) => s.id === selectedId)
@@ -44,7 +46,7 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
         {!selected && <option value="" disabled />}
         {sets.map((set) => (
           <option key={set.id} value={set.id}>
-            {`${set.name} — ${status(set)}`}
+            {`${set.name} — ${statuses.get(set.id)!.text}`}
           </option>
         ))}
       </TextField>
@@ -52,9 +54,9 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
   }
 
   return (
-    <List id={focusIds.list} aria-label="Amount sets" disablePadding>
+    <List id={focusIds.list} aria-label="Amount sets" disablePadding sx={{ width: '100%' }}>
       {sets.map((set) => {
-        const text = status(set)
+        const { ok, text } = statuses.get(set.id)!
         return (
           <ListItem key={set.id} disablePadding>
             <ListItemButton
@@ -64,8 +66,10 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
             >
               <ListItemText
                 primary={set.name}
+                // Names are up to 80 characters, possibly without spaces.
+                slotProps={{ primary: { sx: { overflowWrap: 'anywhere' } } }}
                 secondary={
-                  text === NEEDS_ATTENTION ? (
+                  !ok ? (
                     <Stack
                       component="span"
                       direction="row"
@@ -88,7 +92,7 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
   )
 }
 
-function statusText(set: AmountSet, minor: number, f: Formatters): string {
+function status(set: AmountSet, minor: number, f: Formatters): { ok: boolean; text: string } {
   const result = evaluateAmountSet(set, minor)
-  return result.ok ? gainOrLoss(result.totals.gainLoss, f) : NEEDS_ATTENTION
+  return result.ok ? { ok: true, text: gainOrLoss(result.totals.gainLoss, f) } : { ok: false, text: 'Needs attention' }
 }

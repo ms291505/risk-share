@@ -89,11 +89,7 @@
           { "id": "tp2", "name": "Other additions", "amount": "600000.00" }
         ]
       },
-      "deductions": {
-        "mode": "total",
-        "total": "950000.00",
-        "components": [{ "id": "tc1", "name": "Inactive component", "amount": "1.00" }]
-      }
+      "deductions": { "mode": "total", "total": "950000.00", "components": [] }
     },
     {
       "id": "a-new",

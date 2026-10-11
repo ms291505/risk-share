@@ -7,6 +7,11 @@ function toScaledInt(x: Big, scale: number): bigint {
   return BigInt(x.toFixed(scale).replace('.', ''))
 }
 
+/** Deductions ÷ additions × 100, before any rounding: display only, never used to settle (§5). */
+export function unroundedCR(additions: Big, deductions: Big): Big {
+  return deductions.times(HUNDRED).div(additions)
+}
+
 /**
  * Cost ratio as a percentage, rounded exactly (§5).
  *
@@ -37,7 +42,7 @@ export function computeCR(
   if (awayFromZero && rem !== 0n) q += scaled < 0n ? -1n : 1n
 
   return {
-    unroundedPct: deductions.times(HUNDRED).div(additions),
+    unroundedPct: unroundedCR(additions, deductions),
     roundedPct: D(q.toString()).div(D(10).pow(precision)),
     precision,
     mode,

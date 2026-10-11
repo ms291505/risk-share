@@ -22,8 +22,8 @@ src/
   app/        Theme, providers, app shell, routes, undo shortcuts, live announcer.
   pages/      One component per route, plus the welcome and error views. A view
               with several parts gets its own folder (amountSets/).
-  components/ Shared UI: CommitTextField, NumberField, IconMenu, ComingSoon(Button),
-              visuallyHidden.
+  components/ Shared UI: CommitTextField, NumberField, AccountingAmount, IconMenu,
+              ComingSoon(Button), visuallyHidden, truncated.
   state/      Workspace types, the Zustand store with patch-based undo/redo, name rules,
               and pure helpers for editing parts of the workspace (amountSets.ts).
   io/         The workspace file format (serialize, migrate, validate, parse),

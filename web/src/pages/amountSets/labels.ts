@@ -1,6 +1,6 @@
 import type { AmountComponent, AmountSet, Issue, Parties } from '../../calc'
 import type { GroupKey } from '../../state/amountSets'
-import { partyName } from '../../state/parties'
+import { partyName } from '../../format/parties'
 
 export const GROUP_LABELS: Record<GroupKey, string> = { additions: 'Additions', deductions: 'Deductions' }
 

@@ -72,9 +72,13 @@ export function sumComponents(
   components: AmountComponent[],
   minorUnits: number,
 ): DecimalString | null {
-  const group: AmountGroup = { mode: 'components', total: '', components }
-  const sum = groupTotal(group, { key: 'additions', minorUnits, issues: [] })
-  return sum && toDecimalString(sum, minorUnits)
+  let sum = ZERO
+  for (const c of components) {
+    const x = parseAmount(c.amount, minorUnits, [], [])
+    if (x === null) return null
+    sum = sum.plus(x)
+  }
+  return toDecimalString(sum, minorUnits)
 }
 
 /**

@@ -1,7 +1,10 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import { useId } from 'react'
-import { computeCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
+import { useId, type ReactNode } from 'react'
+import type Big from 'big.js'
+import { unroundedCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
+import { AccountingAmount } from '../../components/AccountingAmount'
+import { truncated } from '../../components/truncated'
 import { unroundedPct } from '../../format/formatters'
 import { useFormatters } from '../../format/useFormatters'
 import { useIssueMessage } from '../../format/useIssueMessage'
@@ -25,34 +28,21 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
   let content
   if (result.ok) {
     const { additions, deductions, gainLoss, counterpartyPaid } = result.totals
-    // Precision and mode only affect the rounded CR, which isn't shown here.
-    const cr = computeCR(additions, deductions, 1, 'halfUp').unroundedPct
-    const rows: [string, string][] = [
-      ['Total additions', f.accountingCurrency(additions)],
-      ['Total deductions', f.accountingCurrency(deductions)],
-      ['Gain (loss)', f.accountingCurrency(gainLoss)],
-      [paidByLabel(parties), f.accountingCurrency(counterpartyPaid)],
-      ['Cost ratio', `${unroundedPct(cr, f)} (before rounding)`],
+    const cr = unroundedCR(additions, deductions)
+    const amounts: [string, Big][] = [
+      ['Total additions', additions],
+      ['Total deductions', deductions],
+      ['Gain (loss)', gainLoss],
+      [paidByLabel(parties), counterpartyPaid],
     ]
     content = (
       <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: 1, columnGap: 3, m: 0 }}>
-        {rows.map(([term, value]) => (
-          <Box key={term} sx={{ display: 'contents' }}>
-            <Typography component="dt">{term}</Typography>
-            <Typography
-              component="dd"
-              sx={{
-                m: 0,
-                textAlign: 'end',
-                fontVariantNumeric: 'tabular-nums',
-                // A hidden ")" after other amounts lines their digits up with those of a loss in parentheses.
-                '&::after': value.endsWith(')') ? undefined : { content: '")"', visibility: 'hidden' },
-              }}
-            >
-              {value}
-            </Typography>
-          </Box>
+        {amounts.map(([term, value]) => (
+          <SummaryRow key={term} term={term}>
+            <AccountingAmount value={value} />
+          </SummaryRow>
         ))}
+        <SummaryRow term="Cost ratio">{`${unroundedPct(cr, f)} (before rounding)`}</SummaryRow>
       </Box>
     )
   } else {
@@ -76,5 +66,18 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
       </Typography>
       <Box role="status">{content}</Box>
     </Box>
+  )
+}
+
+function SummaryRow({ term, children }: { term: string; children: ReactNode }) {
+  return (
+    <>
+      <Typography component="dt" title={term} sx={{ ...truncated, maxWidth: 240 }}>
+        {term}
+      </Typography>
+      <Typography component="dd" sx={{ m: 0, textAlign: 'end', fontVariantNumeric: 'tabular-nums' }}>
+        {children}
+      </Typography>
+    </>
   )
 }

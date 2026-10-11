@@ -10,6 +10,7 @@ import {
   replaceComponentsWithTotal,
   splitIntoComponents,
 } from './amountSets'
+import { MAX_NAME_LENGTH } from './names'
 import { emptyWorkspace, type Scenario, type SavedSweep } from './workspace'
 
 const USD = 2
@@ -48,6 +49,8 @@ describe('duplicateAmountSet', () => {
     const set = withComponents('additions', [component('Premiums', '5', true)])
     const copy = duplicateAmountSet(set)
     expect(copy.name).toBe('Amounts (copy)')
+    const long = 'x'.repeat(MAX_NAME_LENGTH)
+    expect(duplicateAmountSet({ ...set, name: long }).name).toBe(`${'x'.repeat(MAX_NAME_LENGTH - 7)} (copy)`)
     expect(copy.id).not.toBe(set.id)
     expect(copy.additions.components).toEqual([
       { ...set.additions.components[0], id: expect.not.stringMatching('Premiums') },
@@ -85,7 +88,7 @@ describe('deleting an amount set (§8.6)', () => {
 })
 
 describe('splitIntoComponents (§4.3)', () => {
-  const split = (set: AmountSet, key: 'additions' | 'deductions') => splitIntoComponents(set, key, USD)[key]
+  const split = (set: AmountSet, key: 'additions' | 'deductions') => splitIntoComponents(set, key)[key]
 
   it('starts with one component equal to the total', () => {
     const deductions = split(amounts('1000000', '800500.25'), 'deductions')
@@ -93,10 +96,9 @@ describe('splitIntoComponents (§4.3)', () => {
     expect(deductions.components).toMatchObject([{ name: 'Component 1', amount: '800500.25' }])
   })
 
-  it('starts with a blank component when the total is unreadable', () => {
-    expect(split(amounts('1000000', '1.234'), 'deductions').components).toMatchObject([
-      { name: 'Component 1', amount: '' },
-    ])
+  it('keeps a total that can not be read as it is, so its error carries over', () => {
+    expect(split(amounts('1000000', '1.234'), 'deductions').components).toMatchObject([{ amount: '1.234' }])
+    expect(split(amounts('1000000', 'abc'), 'deductions').components).toMatchObject([{ amount: 'abc' }])
   })
 
   it('replaces components stored alongside the total', () => {

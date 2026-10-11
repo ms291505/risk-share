@@ -2,18 +2,19 @@ import CallSplitOutlined from '@mui/icons-material/CallSplitOutlined'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { current } from 'immer'
 import { useId, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { minorUnits, type AmountSet, type Issue } from '../../calc'
 import { NumberField } from '../../components/NumberField'
+import { partyName } from '../../format/parties'
 import { useIssueMessage } from '../../format/useIssueMessage'
 import { componentTotals, replaceComponentsWithTotal, splitIntoComponents, type GroupKey } from '../../state/amountSets'
-import { partyName } from '../../state/parties'
 import { useWorkspaceStore } from '../../state/store'
 import { ComponentsTable } from './ComponentsTable'
 import { focusById, focusIds } from './focus'
 import { GROUP_LABELS, issueAt } from './labels'
-import { updateAmountSet, updateGroup } from './updateAmountSet'
+import { currentAmountSet, updateAmountSet, updateGroup } from './updateAmountSet'
 import { UseTotalDialog, type UseTotalPreview } from './UseTotalDialog'
 
 interface Props {
@@ -43,16 +44,17 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
   const sectionIssue = issueAt(issues, groupKey)
 
   const split = () => {
-    const next = splitIntoComponents(set, groupKey, minor)
-    flushSync(() => updateAmountSet(set.id, `Split ${lower} into components`, () => next))
-    focusById(focusIds.componentName(next[groupKey].components[0].id))
+    const undoLabel = `Split ${lower} into components`
+    flushSync(() => updateAmountSet(set.id, undoLabel, (s) => splitIntoComponents(current(s), groupKey)))
+    const created = currentAmountSet(set.id)?.[groupKey].components[0]
+    if (created) focusById(focusIds.componentName(created.id))
   }
 
   const askToUseTotal = () => {
     const anyMarked = groupKey === 'additions' && group.components.some((c) => c.paidByCounterparty)
     setTotalPreview({
       ...componentTotals(group, minor),
-      group: lower,
+      groupKey,
       count: group.components.length,
       paidBy: anyMarked ? partyName(parties, 'counterparty') : null,
     })
@@ -60,7 +62,7 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
 
   const replaceWithTotal = () => {
     setTotalPreview(null)
-    updateAmountSet(set.id, `Use a total for ${lower}`, () => replaceComponentsWithTotal(set, groupKey, minor))
+    updateAmountSet(set.id, `Use a total for ${lower}`, (s) => replaceComponentsWithTotal(current(s), groupKey, minor))
     replaced.current = true
   }
 
@@ -120,7 +122,7 @@ function TotalField({ set, groupKey, issues }: Props) {
       label={label}
       value={set[groupKey].total}
       // Total additions must be positive (§4.5).
-      allowNegative={groupKey === 'deductions'}
+      decimalKeypad={groupKey === 'additions'}
       error={issue ? message(issue) : null}
       onCommit={(total) =>
         updateGroup(set.id, groupKey, `Edit ${label.toLowerCase()}`, (g) => {

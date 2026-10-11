@@ -17,9 +17,7 @@ import { AmountSetEditor } from './AmountSetEditor'
 import { AmountSetList } from './AmountSetList'
 import { DeleteAmountSetDialog, type DeleteTarget } from './DeleteAmountSetDialog'
 import { focusById, focusIds } from './focus'
-import { amountSetPath } from './updateAmountSet'
-
-const store = useWorkspaceStore
+import { amountSetPath } from './paths'
 
 /** Amount sets (§4): a list beside the editor of the one in the URL. */
 export function AmountSetsPage() {
@@ -44,7 +42,7 @@ export function AmountSetsPage() {
 
   function create() {
     const set = newAmountSet(sets)
-    store.getState().update('Add amount set', (w) => {
+    useWorkspaceStore.getState().update('Add amount set', (w) => {
       w.amountSets.push(set)
     })
     openNew(set)
@@ -52,7 +50,7 @@ export function AmountSetsPage() {
 
   function duplicate(original: AmountSet) {
     const copy = duplicateAmountSet(original)
-    store.getState().update('Duplicate amount set', (w) => {
+    useWorkspaceStore.getState().update('Duplicate amount set', (w) => {
       w.amountSets.splice(w.amountSets.findIndex((s) => s.id === original.id) + 1, 0, copy)
     })
     openNew(copy)
@@ -63,10 +61,10 @@ export function AmountSetsPage() {
     const { set, impact } = deleting
     setDeleting(null)
     // Another tab may have become the editor while the dialog was open.
-    if (store.getState().readOnly) return
+    if (useWorkspaceStore.getState().readOnly) return
     const index = sets.findIndex((s) => s.id === set.id)
-    store.getState().update('Delete amount set', (w) => deleteAmountSet(w, set.id))
-    const remaining = store.getState().workspace.amountSets
+    useWorkspaceStore.getState().update('Delete amount set', (w) => deleteAmountSet(w, set.id))
+    const remaining = useWorkspaceStore.getState().workspace.amountSets
     const next = remaining[Math.min(index, remaining.length - 1)]
     navigate(next ? amountSetPath(next.id) : '/amounts', { replace: true })
     const n = impact.scenarios.length
@@ -109,7 +107,10 @@ export function AmountSetsPage() {
         </Stack>
       ) : (
         <Stack direction={compact ? 'column' : 'row'} spacing={3} sx={{ width: '100%', alignItems: 'flex-start' }}>
-          <Stack spacing={1} sx={{ width: compact ? '100%' : 260, flexShrink: 0, alignItems: 'flex-start' }}>
+          <Stack
+            spacing={1}
+            sx={{ width: compact ? '100%' : 260, minWidth: 0, flexShrink: 0, alignItems: 'flex-start' }}
+          >
             {newButton}
             <AmountSetList sets={sets} selectedId={amountSetId} compact={compact} />
           </Stack>
@@ -119,7 +120,10 @@ export function AmountSetsPage() {
               set={selected}
               onDuplicate={() => duplicate(selected)}
               onDelete={() =>
-                setDeleting({ set: selected, impact: deleteImpact(store.getState().workspace, selected.id) })
+                setDeleting({
+                  set: selected,
+                  impact: deleteImpact(useWorkspaceStore.getState().workspace, selected.id),
+                })
               }
             />
           ) : (

@@ -1,5 +1,5 @@
 import TextField, { type TextFieldProps } from '@mui/material/TextField'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useWorkspaceStore } from '../state/store'
 
 export type ParseResult = { ok: true; value: string } | { ok: false; error: string }
@@ -15,6 +15,8 @@ export type CommitTextFieldProps = Omit<TextFieldProps, 'value' | 'onChange' | '
   parse?(text: string): ParseResult
   /** Inline error for the committed value; linked to the field for screen readers (§13.4). */
   error?: string | null
+  /** Id of an element that further describes the field, e.g. its unit, read after any error. */
+  describedBy?: string
 }
 
 /**
@@ -28,11 +30,14 @@ export function CommitTextField({
   onCommit,
   parse,
   error,
+  describedBy,
   onKeyDown,
   slotProps,
   ...props
 }: CommitTextFieldProps) {
   const readOnly = useWorkspaceStore((s) => s.readOnly)
+  const autoId = useId()
+  const id = props.id ?? autoId
   // null when not editing, so external changes (e.g. app undo) show through.
   const [draft, setDraft] = useState<string | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -48,15 +53,30 @@ export function CommitTextField({
   const commit = () => {
     if (draft === null) return
     const parsed = parse ? parse(draft) : { ok: true as const, value: draft }
-    if (!parsed.ok) return setParseError(parsed.error)
+    if (!parsed.ok) {
+      setParseError(parsed.error)
+      return
+    }
     if (draft !== value) onCommit(parsed.value)
     discard()
   }
   const shownError = parseError ?? error
+
+  const htmlInput = typeof slotProps?.htmlInput === 'object' ? slotProps.htmlInput : undefined
+  // MUI links the error itself, unless another description replaces its own.
+  const descriptions = describedBy && [shownError && `${id}-helper-text`, htmlInput?.['aria-describedby'], describedBy]
   return (
     <TextField
       {...props}
-      slotProps={readOnly ? { ...slotProps, htmlInput: { ...slotProps?.htmlInput, readOnly: true } } : slotProps}
+      id={id}
+      slotProps={{
+        ...slotProps,
+        htmlInput: {
+          ...htmlInput,
+          ...(readOnly && { readOnly: true }),
+          ...(descriptions && { 'aria-describedby': descriptions.filter(Boolean).join(' ') }),
+        },
+      }}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}

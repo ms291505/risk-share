@@ -18,10 +18,17 @@ Agreed with the user on 2026-10-10:
 - **Cost ratio** in the editor is shown **exact and unrounded**, e.g. "Cost ratio 80.05% (before rounding)": up to 4 decimals, with ≈ when it's longer. Rounding belongs to each set of terms (§5).
 - **Amount set names** follow the tag rules (trimmed, not empty, ≤ 80 characters, via `state/names.ts`). Duplicates are allowed. Name problems show inline but don't make the set invalid for calculations.
 
+## Changed in review (PR #3)
+The parts below are updated to match. In short:
+- **Total vs. components is one-way.** "Split into components" turns a total into one component holding the total as entered. "Use a total instead…" asks first, removes the components and keeps their sum. Components are never kept inactive to be restored later.
+- **Only components record what the counterparty paid.** Format v2 drops the optional total-mode amount; the v1 → v2 migration turns it into "Paid by ‹counterparty›" and "Other additions" components.
+- **Party names everywhere:** "Paid by Bob", including undo labels and validation messages.
+- **Accounting style:** the summary says "Gain (loss)", and negative amounts are in parentheses in every locale.
+
 ## What already exists (reuse it)
 - `calc/amounts.ts`
-  - `evaluateAmountSet(set, minorUnits)` returns totals or `Issue`s, with paths such as `['additions','components','<id>','amount']`, `['additions','total']`, `['additions']` (additions ≤ 0) and `['additions','paidByCounterparty']`.
-  - `groupTotal`, for the sum when switching from components to a total.
+  - `evaluateAmountSet(set, minorUnits)` returns totals or `Issue`s, with paths such as `['additions','components','<id>','amount']`, `['additions','total']`, and `['additions']` (additions ≤ 0, or counterparty-paid out of range).
+  - `sumComponents`, for the sum when going from components to a total.
 - `calc/costRatio.ts`: `computeCR`. Use its `unroundedPct` for the exact CR display.
 - `calc/decimal.ts`: `isDecimalString`, `parseDecimal`, `decimalPlaces` and `D`. `calc/currency.ts`: `minorUnits`.
 - `format/formatters.ts`: `makeFormatters`, which formats `Big` values exactly via Intl decimal strings. `format/useFormatters.ts` is its hook.
@@ -57,26 +64,24 @@ The single new issue code `unreadableNumber`, with `{ example, decimal }`, gives
   - A field that isn't mounted holds no draft, so leaving the page reverts it.
   - Existing callers are unaffected.
 - **`components/NumberField.tsx`:** wraps `CommitTextField`.
-  - Props: `value: DecimalString | ''`, `onCommit(value)`, `kind: 'currency' | 'percent'` (the terms editor will use percent), `allowNegative`, and `error` (from calc issues).
+  - Props: `value: DecimalString | ''`, `onCommit(value)`, `kind: 'currency' | 'percent'` (the terms editor will use percent; it accepts a typed "%"), `decimalKeypad`, and `error` (from calc issues).
   - Shows `formatNumberInput` text and a currency or `%` adornment. The adornment is `aria-hidden`, and the currency name goes into the accessible description.
-  - `inputMode="decimal"` only when `!allowNegative`, because iPad's decimal keypad has no minus key.
+  - `inputMode="decimal"` only with `decimalKeypad`, which is only for fields where a negative is never valid: iPad's decimal keypad has no minus key.
   - A parse error takes priority over the calc error.
 
 ## Part 3: state helpers (`web/src/state/amountSets.ts`, pure functions)
 - **`newAmountSet(existing)`:** "Amount set N" (the lowest unused N). Additions and deductions both start in total mode at `'0'`, so the set is invalid until filled in (§4.7).
-- **`duplicateAmountSet(set)`:** new ids for the set and its components, named "‹Name› (copy)", inserted right after the original (§8.5).
+- **`duplicateAmountSet(set)`:** new ids for the set and its components, named "‹Name› (copy)" (the name is shortened to stay within 80 characters), inserted right after the original (§8.5).
 - **`deleteImpact(workspace, id)`** returns `{ scenarios, sweeps }`: scenarios using the set (deleted with it) and saved sweeps whose baseline it is (kept, but they'll need repair, §9.7).
 - **`deleteAmountSet(draft, id)`:** removes the set and its scenarios.
-- **`setGroupMode(group, mode, minorUnits)`** (§4.3):
-  - **Components → total:** total = the components' sum (via `groupTotal`), or unchanged if a component is unreadable. For additions, `paidByCounterparty` = the sum of the marked components (blank if none are marked). The components are kept, inactive.
-  - **Total → components with kept components:** restore them unchanged.
-  - **Total → components with none kept:** one component equal to the total (blank if the total is unreadable). For additions where paid-by-counterparty P is valid and 0 < P < total, create two components instead: "Paid by counterparty" (P, marked) and "Other additions" (total − P). If P = total, create one marked component. This keeps both numbers.
-- **`addComponent(group)`** and **`removeComponent(group, id)`:** default name "Component N". Component names use `nameIssues` for inline errors only.
+- **`splitIntoComponents(set, key)`** (§4.3): one component holding the total exactly as entered, so unreadable text keeps its error. Components stored beside the total (only in imported files) are replaced.
+- **`replaceComponentsWithTotal(set, key, minorUnits)`** (§4.3): removes the components and uses their sum as the total (blank if an amount is unreadable). What marked components recorded as paid by the counterparty is dropped, and the confirmation says so.
+- **`newComponent(existing)`:** default name "Component N". Component names use `nameIssues` for inline errors only.
 - **Undo labels:**
   - "Add amount set", "Duplicate amount set", "Delete amount set", "Rename amount set"
-  - "Edit total additions", "Edit total deductions", "Edit counterparty-paid amount"
-  - "Switch additions to components" (and the other mode switches)
-  - "Add component", "Remove component", "Rename component", "Edit component amount", "Mark as paid by counterparty"
+  - "Edit total additions", "Edit total deductions"
+  - "Split additions into components", "Use a total for additions" (and the same for deductions)
+  - "Add component", "Remove component", "Rename component", "Edit component amount", "Mark as paid by ‹counterparty›"
 
 ## Part 4: the amount sets view (`web/src/pages/amountSets/`)
 - **`AmountSetsPage`:** a list beside the editor, using `amounts/:amountSetId?`.
@@ -87,18 +92,18 @@ The single new issue code `unreadableNumber`, with `{ example, decimal }`, gives
 - **`AmountSetList`:** for each set, its name and either its gain/loss or "Needs attention" (an icon plus text, never color alone).
 - **`AmountSetEditor`:**
   - Name, plus **Duplicate** and **Delete**.
-  - An **Additions** section and a **Deductions** section (`AmountGroupEditor`), each with a Total / Components toggle:
-    - **Total mode:** the total field. Additions also get an optional "Paid by counterparty" field.
-    - **Components mode:** a table with Name, Amount, a "Paid by counterparty" checkbox (additions only) and Remove, plus **Add component**. Adding focuses the new row's name. Removing focuses the next row, or **Add component**.
+  - An **Additions** section and a **Deductions** section (`AmountGroupEditor`):
+    - **Total mode:** the total field, and **Split into components**.
+    - **Components mode** (`ComponentsTable`): Name, Amount, a "Paid by ‹counterparty›" checkbox (additions only) and Remove; **Add component** right under the rows; then the total (and for additions, the counterparty-paid amount). **Use a total instead…** opens `UseTotalDialog`. Adding focuses the new row's name. Removing focuses the next row, or **Add component**.
     - Each input's accessible label includes its row, e.g. "Amount, Rent rebate".
 - **`AmountSetSummary`** (`role="status"`, so changes are announced politely, §13.4):
-  - Total additions, total deductions, gain/loss with the word "gain" or "loss", counterparty-paid, and the exact unrounded CR.
+  - Total additions, total deductions, "Gain (loss)", counterparty-paid, and the exact unrounded CR. Negative amounts are in parentheses (`AccountingAmount`).
   - When the set is invalid, it lists the problems instead.
   - Errors with field paths go inline on their fields. `['additions']` goes on the section.
 - **`DeleteAmountSetDialog`:** follows the `ReplaceWorkspaceDialog` pattern.
   - Lists the scenarios that will be deleted (count, then names; after 10, "and N more") and the sweeps that will need repair (§8.6).
   - It's one undo step. Afterwards, replace-navigate to the next set (or `/amounts`), put focus on the list, and announce it.
-- **Read-only tabs:** toggles, checkboxes and buttons are disabled when the store's `readOnly` is true. Text fields already handle it.
+- **Read-only tabs:** checkboxes and buttons are disabled when the store's `readOnly` is true. Text fields already handle it.
 
 ## Docs
 - **`REQUIREMENTS.md`:**
