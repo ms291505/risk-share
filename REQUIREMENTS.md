@@ -51,6 +51,15 @@
 1. **Number entry** follows the workspace locale's decimal and grouping
    separators (e.g. `1.000,50` in a German locale). Input that can't be parsed
    unambiguously shows an inline error rather than guessing.
+   - Grouping is optional, but where it's used it must match the locale
+     exactly, so `1.5` in a German locale is an error rather than 15.
+   - Number fields also accept the workspace currency's symbol or code (so a
+     pasted `$1,000,000.00` works), accounting negatives such as `(5,000)`,
+     and the Unicode minus `−`. Other currencies and suffixes such as `k` are
+     errors.
+   - Text that can't be read stays in the field with the error and isn't
+     saved: the saved value is unchanged, and Escape or leaving the view
+     shows it again.
 1. Currency amounts are entered and stored to the currency's minor unit (no
    fractional cents).
 1. Workspace notes support basic markdown (bold, italics, lists, links).
@@ -65,7 +74,9 @@
    - **Counterparty**: the party on whose behalf the risk-bearer operates
      (e.g. Bob).
 1. Users can name both parties. Results always show direction clearly
-   (who pays whom).
+   (who pays whom). Wherever the app refers to a party, it uses the party's
+   name (e.g. "Paid by Bob"); the role names appear only where the roles
+   themselves are being labeled, such as the party name fields.
 1. Party names are trimmed of leading/trailing spaces, must be non-empty, are
    at most 80 characters (counting each emoji, even a combined one like a
    flag, as one), and must differ from each other (ignoring case). Invalid
@@ -74,30 +85,38 @@
 ## 4. Amounts (additions & deductions)
 
 1. An **amount set** is a named, reusable collection of additions and
-   deductions.
+   deductions. Amount set and component names follow the party name rules
+   (§3.3) but needn't be unique. Name problems show inline errors but don't
+   make the amount set invalid.
 1. Gain or loss = total additions − total deductions. Positive is a gain;
    negative is a loss.
 1. Additions and deductions are composable: users can enter a total directly
    or enter named components that sum to it. Additions and deductions each
    choose their mode independently.
-   - Switching from components to a total starts the total at the
-     components' sum. The components are kept but inactive, and switching
-     back restores them.
-   - Switching from a total to components starts with one component equal to
+   - Splitting a total into components starts with one component equal to
      the total.
-   - Inactive components are not used in calculations and cannot be chosen
-     as a sweep variable (§9.2).
+   - Components show their total below them (and for additions, the amount
+     paid by the counterparty), as well as in the amount set's summary.
+   - Going back from components to a total is a deliberate reset: after a
+     confirmation, the components are removed, and the total starts at their
+     sum (blank if an amount can't be read). A total has no
+     counterparty-paid amount (§4.6), so the confirmation says what the
+     marked components recorded will be dropped. This can be undone.
+   - Components are never kept hidden to be restored later. Components
+     stored alongside a total (possible in imported files) are inactive: they
+     aren't used in calculations or offered as a sweep variable (§9.2), and
+     splitting the total into components replaces them.
 1. Individual components may be negative (e.g. rebates within deductions).
 1. Total additions must be > 0 (see §4.7 for how invalid data behaves). Total
    deductions may be zero or negative.
 1. **Paid by counterparty.** Part of the additions may be paid by the
    counterparty (e.g. premiums or fees Bob pays Lisa). The rest is treated as
    third-party revenue. This amount is used only for net position (§7).
-   - With components: each addition component can be marked *paid by
-     counterparty*; the amount is the sum of marked components. (This is a
-     per-component checkbox, not a scenario tag; see §8.2.)
-   - With a total only: an optional *paid by counterparty* amount field
-     (must be ≤ total additions).
+   - It's recorded only with components: each addition component can be
+     marked *paid by ‹counterparty›*, and the amount is the sum of the
+     marked components. (This is a per-component checkbox, not a scenario
+     tag; see §8.2.) Additions entered as a total have no counterparty-paid
+     amount; to record one, split them into components.
    - The counterparty-paid amount must be between 0 and total additions.
    - If it is zero, the counterparty's net position shows a hint that no
      counterparty-paid additions have been entered.
@@ -105,6 +124,13 @@
    Any scenario or sweep point that uses an invalid amount set shows "—"
    instead of results, with the reason. (A new amount set starts at additions
    = 0 and is therefore invalid until filled in.)
+1. The amount set editor shows the totals, the gain or loss, the
+   counterparty-paid amount, and the cost ratio. Amounts are shown
+   accounting style: the gain or loss is labeled "Gain (loss)", and negative
+   amounts are in parentheses in every locale. The cost ratio is shown
+   **before rounding** (e.g. "80.05% (before rounding)", to at most 4
+   decimals and marked ≈ when it has more), since each set of terms rounds
+   it its own way (§5).
 
 ## 5. Cost ratio
 

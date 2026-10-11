@@ -1,12 +1,14 @@
-import type { Issue, IssueCode } from '../calc'
+import type { Issue, IssueCode, Parties } from '../calc'
+import { partyName } from './parties'
 
-type Params = Issue['params']
+type Params = NonNullable<Issue['params']>
 
-const MESSAGES: Record<IssueCode, string | ((p: NonNullable<Params>) => string)> = {
+const MESSAGES: Record<IssueCode, string | ((p: Params, parties: Parties) => string)> = {
   invalidNumber: 'Enter a number.',
   tooManyDecimals: (p) => `Use at most ${p.max} decimal places.`,
   additionsNotPositive: 'Total additions must be greater than zero.',
-  counterpartyPaidOutOfRange: 'The counterparty-paid amount must be between zero and total additions.',
+  counterpartyPaidOutOfRange: (_, parties) =>
+    `The amount paid by ${partyName(parties, 'counterparty')} must be between zero and total additions.`,
   invalidPrecision: 'Cost ratio precision is out of range.',
   missingSide: 'A side these terms need is missing.',
   noTiers: 'Add at least one threshold.',
@@ -29,15 +31,19 @@ const MESSAGES: Record<IssueCode, string | ((p: NonNullable<Params>) => string)>
   nameTooLong: (p) => `Use at most ${p.max} characters.`,
   partyNamesSame: 'The two parties need different names.',
   tooManyPoints: (p) => `This range has ${p.count} points; the limit is ${p.max}. Increase the step.`,
+  unreadableNumber: (p) => `Enter a number like ${p.example}. This workspace uses "${p.decimal}" for decimals.`,
 }
 
-/** A user-facing sentence for a validation issue (§6.4). All validation copy lives here. */
-export function issueMessage(issue: Issue): string {
+/**
+ * A user-facing sentence for a validation issue (§6.4), naming the parties
+ * (§3.2). All validation copy lives here.
+ */
+export function issueMessage(issue: Issue, parties: Parties): string {
   const m = MESSAGES[issue.code]
-  return typeof m === 'string' ? m : m(issue.params ?? {})
+  return typeof m === 'string' ? m : m(issue.params ?? {}, parties)
 }
 
 /** Distinct messages for a list of issues, in order. */
-export function issueMessages(issues: Issue[]): string[] {
-  return [...new Set(issues.map(issueMessage))]
+export function issueMessages(issues: Issue[], parties: Parties): string[] {
+  return [...new Set(issues.map((issue) => issueMessage(issue, parties)))]
 }

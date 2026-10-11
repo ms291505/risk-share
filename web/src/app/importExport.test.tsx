@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter } from 'react-router'
+import { RouterProvider } from 'react-router/dom'
 import { templateTerms } from '../calc'
 import { startPersistence, STORAGE_KEY, usePersistence } from '../io/persistence'
 import { serializeWorkspace } from '../io/serialize'

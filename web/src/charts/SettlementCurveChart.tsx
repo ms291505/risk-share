@@ -68,7 +68,7 @@ export function SettlementCurveChart({ terms, additions }: SettlementCurveChartP
       <Alert severity="warning" sx={{ width: '100%' }}>
         This chart appears once the terms are complete:
         <ul style={{ margin: 0 }}>
-          {issueMessages(curve.issues).map((m) => (
+          {issueMessages(curve.issues, parties).map((m) => (
             <li key={m}>{m}</li>
           ))}
         </ul>

@@ -16,6 +16,13 @@ export interface Formatters {
   currency(x: Num): string
   /** With an explicit sign, e.g. "+$50,000.00"; zero has no sign. */
   signedCurrency(x: Num): string
+  /** Without a sign, for text that says the direction in words, e.g. "Loss $50,000.00". */
+  unsignedCurrency(x: Num): string
+  /**
+   * Negatives in parentheses, e.g. "($50,000.00)", for a value labeled
+   * "Gain (loss)". In every locale, since the label relies on it.
+   */
+  accountingCurrency(x: Num): string
   /** Short form for chart axes, e.g. "$50K". */
   compactCurrency(x: number): string
   /**
@@ -30,9 +37,15 @@ export interface Formatters {
 export function makeFormatters(locale: string, currency: string): Formatters {
   // Same minor unit as calc's rounding, so display and settlement agree by construction.
   const digits = minorUnits(currency)
-  const moneyOptions = { style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits } as const
+  const moneyOptions = {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  } as const
   const money = new Intl.NumberFormat(locale, moneyOptions)
   const signedMoney = new Intl.NumberFormat(locale, { ...moneyOptions, signDisplay: 'exceptZero' })
+  const unsignedMoney = new Intl.NumberFormat(locale, { ...moneyOptions, signDisplay: 'never' })
   const compact = new Intl.NumberFormat(locale, { style: 'currency', currency, notation: 'compact' })
   const pctFormats = new Map<number, Intl.NumberFormat>()
   const pctFormat = (decimals: number) => {
@@ -50,6 +63,11 @@ export function makeFormatters(locale: string, currency: string): Formatters {
   return {
     currency: (x) => money.format(exact(x)),
     signedCurrency: (x) => signedMoney.format(exact(x)),
+    unsignedCurrency: (x) => unsignedMoney.format(exact(x)),
+    accountingCurrency: (x) => {
+      const negative = typeof x === 'number' ? x < 0 : x.lt(0)
+      return negative ? `(${unsignedMoney.format(exact(x))})` : money.format(exact(x))
+    },
     compactCurrency: (x) => compact.format(x),
     // Percent style multiplies by 100; shift the decimal point in the string instead of dividing.
     pct: (x, decimals) =>
@@ -63,4 +81,23 @@ export function direction(signed: Num, parties: Parties): string {
   if (sign > 0) return `${parties.riskBearer} pays ${parties.counterparty}`
   if (sign < 0) return `${parties.counterparty} pays ${parties.riskBearer}`
   return 'No payment'
+}
+
+/** "Gain $5.00", "Loss $5.00" or "Break-even", so a loss isn't shown by a minus sign alone (§4.2). */
+export function gainOrLoss(gainLoss: Big, f: Formatters): string {
+  const sign = gainLoss.cmp(0)
+  if (sign > 0) return `Gain ${f.currency(gainLoss)}`
+  if (sign < 0) return `Loss ${f.unsignedCurrency(gainLoss)}`
+  return 'Break-even'
+}
+
+const MAX_UNROUNDED_DECIMALS = 4
+
+/**
+ * A percentage before any rounding, such as the CR in the amount set editor:
+ * exact up to 4 decimals ("80.05%"), approximate beyond that ("≈33.3333%").
+ */
+export function unroundedPct(x: Big, f: Formatters): string {
+  const decimals = x.toFixed().split('.')[1]?.length ?? 0
+  return decimals > MAX_UNROUNDED_DECIMALS ? `≈${f.pct(x, MAX_UNROUNDED_DECIMALS)}` : f.pct(x, decimals)
 }

@@ -19,6 +19,12 @@ export function sameName(a: string, b: string): boolean {
   return normalizeName(a).toLowerCase() === normalizeName(b).toLowerCase()
 }
 
+/** `name` and `suffix`, with `name` shortened so the whole stays within the limit, e.g. "‹name› (copy)". */
+export function withSuffix(name: string, suffix: string): string {
+  const room = MAX_NAME_LENGTH - nameLength(suffix)
+  return `${graphemes(normalizeName(name)).slice(0, room).join('').trimEnd()}${suffix}`
+}
+
 /** A trimmed name must be non-empty and at most 80 characters. */
 export function nameIssues(name: string, path: string[]): Issue[] {
   const trimmed = normalizeName(name)

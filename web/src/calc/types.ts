@@ -27,15 +27,11 @@ export interface AmountGroup {
   components: AmountComponent[]
 }
 
-export interface AdditionsGroup extends AmountGroup {
-  /** Total mode only: optional amount of the additions paid by the counterparty (§4.6). */
-  paidByCounterparty?: DecimalString
-}
-
 export interface AmountSet {
   id: string
   name: string
-  additions: AdditionsGroup
+  /** The counterparty-paid amount comes from marked components only (§4.6). */
+  additions: AmountGroup
   deductions: AmountGroup
 }
 
@@ -120,6 +116,8 @@ export type IssueCode =
   | 'nameTooLong'
   | 'partyNamesSame'
   | 'tooManyPoints'
+  // Number entry (§2.4), from format/numberInput.ts.
+  | 'unreadableNumber'
 
 export interface Issue {
   code: IssueCode

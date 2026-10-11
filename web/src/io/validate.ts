@@ -1,5 +1,4 @@
 import type {
-  AdditionsGroup,
   AmountComponent,
   AmountGroup,
   AmountSet,
@@ -305,14 +304,10 @@ class Checker {
   // --- Amount sets (§4).
 
   private amountSet(o: Obj): AmountSet {
-    const additions = this.obj(o, 'additions', [])
-    const group = this.group(additions, ['additions']) as AdditionsGroup
-    const paid = this.optStr(additions, 'paidByCounterparty', ['additions'])
-    if (paid !== undefined) group.paidByCounterparty = paid
     return {
       id: this.id(o, []),
       name: this.str(o, 'name', []),
-      additions: group,
+      additions: this.group(this.obj(o, 'additions', []), ['additions']),
       deductions: this.group(this.obj(o, 'deductions', []), ['deductions']),
     }
   }

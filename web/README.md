@@ -20,12 +20,16 @@ code comments refer to it.
 src/
   calc/       Pure settlement math (no React/DOM). Exact decimals via big.js.
   app/        Theme, providers, app shell, routes, undo shortcuts, live announcer.
-  pages/      One component per route, plus the welcome and error views.
-  components/ Shared UI: CommitTextField, IconMenu, ComingSoon(Button), visuallyHidden.
-  state/      Workspace types, the Zustand store with patch-based undo/redo, name rules.
+  pages/      One component per route, plus the welcome and error views. A view
+              with several parts gets its own folder (amountSets/).
+  components/ Shared UI: CommitTextField, NumberField, AccountingAmount, IconMenu,
+              ComingSoon(Button), visuallyHidden, truncated.
+  state/      Workspace types, the Zustand store with patch-based undo/redo, name rules,
+              and pure helpers for editing parts of the workspace (amountSets.ts).
   io/         The workspace file format (serialize, migrate, validate, parse),
               auto-save to browser storage, and the one-active-tab lock.
-  format/     Locale- and currency-aware formatters, validation messages, browser feature check.
+  format/     Locale- and currency-aware formatters and number entry, validation
+              messages, browser feature check.
   charts/     Recharts charts, wrapped in ChartFrame (summary, data table, export).
 ```
 
@@ -45,13 +49,19 @@ src/
   me" are undoable (§12.3): use `update(label, () => newWorkspace)`.
 - **Text inputs:** use `CommitTextField`, so each edit is one undo step,
   committed on blur or Enter (§12.5).
+- **Number inputs:** use `NumberField` with `kind="currency"` or `"percent"`.
+  It reads and shows numbers in the workspace locale (§2.4), and stores
+  canonical decimal strings. Text it can't read stays in the field with an
+  error and is never saved. For other text that needs converting before it's
+  saved, pass `parse` to `CommitTextField`.
 - **Read-only tabs:** while another tab is the editor, the store's `readOnly`
-  is true and `update` does nothing (§11.1). `CommitTextField` already turns
-  read-only; any other editing control (checkboxes, selects, buttons that
+  is true and `update` does nothing (§11.1). `CommitTextField` and `NumberField`
+  already turn read-only; any other editing control (checkboxes, selects, buttons that
   change data) should read `readOnly` from the store and be disabled.
 - **Validation:** return calc-style `Issue`s (`calc/types.ts`) and add the
   user-facing sentence to `format/issues.ts`, which holds all validation copy.
-  Names (parties, tags) share the rules in `state/names.ts`.
+  Names (parties, tags, amount sets, components) share the rules in
+  `state/names.ts`.
 - **New chart:** compute the data in `calc` as `Big`s. Wrap the chart in
   `ChartFrame` with a text summary and a data table, take colors from
   `useChartTheme`, and call `toNumber()` only at the Recharts boundary.

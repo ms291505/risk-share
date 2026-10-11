@@ -1,6 +1,6 @@
 // Test-only builders for compact fixtures. Tests that assert on ids pass their own.
 import { D } from '../decimal'
-import type { AmountSet, Invalid, Side, SideLimits, Terms, TermsType, ThresholdUnit } from '../types'
+import type { AmountGroup, AmountSet, Invalid, Side, SideLimits, Terms, TermsType, ThresholdUnit } from '../types'
 
 let seq = 0
 const id = () => `id${++seq}`
@@ -13,12 +13,29 @@ export function expectOk<T extends { ok: true } | Invalid>(r: T): Exclude<T, Inv
   return r as Exclude<T, Invalid>
 }
 
+/**
+ * Total-mode amounts. With `paidByCounterparty`, additions are split into a
+ * marked component and the rest, since a total can't record it (§4.6).
+ */
 export function amounts(additions: string, deductions: string, paidByCounterparty?: string): AmountSet {
   return {
     id: id(),
     name: 'Amounts',
-    additions: { mode: 'total', total: additions, components: [], paidByCounterparty },
+    additions: paidByCounterparty
+      ? paidSplit(additions, paidByCounterparty)
+      : { mode: 'total', total: additions, components: [] },
     deductions: { mode: 'total', total: deductions, components: [] },
+  }
+}
+
+function paidSplit(additions: string, paid: string): AmountGroup {
+  return {
+    mode: 'components',
+    total: additions,
+    components: [
+      { id: id(), name: 'Paid by counterparty', amount: paid, paidByCounterparty: true },
+      { id: id(), name: 'Other additions', amount: D(additions).minus(paid).toFixed() },
+    ],
   }
 }
 

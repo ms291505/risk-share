@@ -1,6 +1,14 @@
 import type Big from 'big.js'
-import { decimalPlaces, HUNDRED, parseDecimal, roundToMinor, ZERO } from './decimal'
-import type { AmountGroup, AmountSet, AmountTotals, Invalid, Issue } from './types'
+import { decimalPlaces, HUNDRED, parseDecimal, roundToMinor, toDecimalString, ZERO } from './decimal'
+import type {
+  AmountComponent,
+  AmountGroup,
+  AmountSet,
+  AmountTotals,
+  DecimalString,
+  Invalid,
+  Issue,
+} from './types'
 
 /** Replaces one input of an amount set, for sweeps (§9). Values are already rounded to minor units. */
 export type AmountOverride =
@@ -59,21 +67,28 @@ export function groupTotal(group: AmountGroup, opts: GroupTotalOptions): Big | n
   return sum
 }
 
+/** The components' sum, for switching to a total (§4.3), or null if any amount is invalid. */
+export function sumComponents(
+  components: AmountComponent[],
+  minorUnits: number,
+): DecimalString | null {
+  let sum = ZERO
+  for (const c of components) {
+    const x = parseAmount(c.amount, minorUnits, [], [])
+    if (x === null) return null
+    sum = sum.plus(x)
+  }
+  return toDecimalString(sum, minorUnits)
+}
+
 /**
- * §4.6. In components mode this relies on `groupTotal` over the same
+ * §4.6: the sum of the additions components marked as paid by the
+ * counterparty; zero for a total. Relies on `groupTotal` over the same
  * components to report invalid amounts, so it returns null without an issue.
  */
-function counterpartyPaid(
-  set: AmountSet,
-  minorUnits: number,
-  issues: Issue[],
-  override?: ComponentOverride,
-): Big | null {
+function counterpartyPaid(set: AmountSet, override?: ComponentOverride): Big | null {
   const add = set.additions
-  if (add.mode === 'total') {
-    if (add.paidByCounterparty === undefined || add.paidByCounterparty === '') return ZERO
-    return parseAmount(add.paidByCounterparty, minorUnits, ['additions', 'paidByCounterparty'], issues)
-  }
+  if (add.mode === 'total') return ZERO
   let sum = ZERO
   for (const c of add.components) {
     if (!c.paidByCounterparty) continue
@@ -90,7 +105,7 @@ export function checkTotals(totals: AmountTotals): Issue[] {
   if (totals.additions.lte(0)) {
     issues.push({ code: 'additionsNotPositive', path: ['additions'] })
   } else if (totals.counterpartyPaid.lt(0) || totals.counterpartyPaid.gt(totals.additions)) {
-    issues.push({ code: 'counterpartyPaidOutOfRange', path: ['additions', 'paidByCounterparty'] })
+    issues.push({ code: 'counterpartyPaidOutOfRange', path: ['additions'] })
   }
   return issues
 }
@@ -135,7 +150,7 @@ export function evaluateAmountSet(
     })
   }
 
-  const cp = counterpartyPaid(set, minorUnits, issues, compOverride('additions'))
+  const cp = counterpartyPaid(set, compOverride('additions'))
 
   if (additions === null || deductions === null || cp === null) return { ok: false, issues }
   const totals = makeTotals(additions, deductions, cp)

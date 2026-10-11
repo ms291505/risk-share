@@ -23,8 +23,7 @@ function groupAmounts(g: AmountGroup): DecimalString[] {
 }
 
 function amountSetAmounts(set: AmountSet): DecimalString[] {
-  const cp = set.additions.paidByCounterparty
-  return [...groupAmounts(set.additions), ...(cp ? [cp] : []), ...groupAmounts(set.deductions)]
+  return [...groupAmounts(set.additions), ...groupAmounts(set.deductions)]
 }
 
 function sideAmounts(terms: Terms, side: Side | undefined): DecimalString[] {
@@ -70,9 +69,7 @@ export function previewCurrencyChange(
 
 export function rescaleAmountSet(set: AmountSet, newMinorUnits: number): AmountSet {
   const f: Rescale = (s) => rescaleAmount(s, newMinorUnits)
-  const additions = mapGroup(set.additions, f)
-  if (set.additions.paidByCounterparty) additions.paidByCounterparty = f(set.additions.paidByCounterparty)
-  return { ...set, additions, deductions: mapGroup(set.deductions, f) }
+  return { ...set, additions: mapGroup(set.additions, f), deductions: mapGroup(set.deductions, f) }
 }
 
 export function rescaleTerms(terms: Terms, newMinorUnits: number): Terms {

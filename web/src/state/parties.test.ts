@@ -9,10 +9,7 @@ describe('partyNameIssues (§3.3)', () => {
 
   it('rejects empty and overlong names', () => {
     expect(
-      partyNameIssues({ riskBearer: '  ', counterparty: 'x'.repeat(MAX_NAME_LENGTH + 1) }).map((i) => [
-        i.code,
-        i.path,
-      ]),
+      partyNameIssues({ riskBearer: '  ', counterparty: 'x'.repeat(MAX_NAME_LENGTH + 1) }).map((i) => [i.code, i.path]),
     ).toEqual([
       ['nameEmpty', ['riskBearer']],
       ['nameTooLong', ['counterparty']],

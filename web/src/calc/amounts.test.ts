@@ -48,9 +48,8 @@ describe('evaluateAmountSet', () => {
     expect(totalsOf(set)[1]).toBe('700000')
   })
 
-  it('uses the optional counterparty-paid field in total mode (§4.6)', () => {
+  it('takes the counterparty-paid amount from marked components; a total has none (§4.6)', () => {
     expect(totalsOf(amounts('100', '50', '40'))[3]).toBe('40')
-    expect(totalsOf(amounts('100', '50', ''))[3]).toBe('0')
     expect(totalsOf(amounts('100', '50'))[3]).toBe('0')
   })
 

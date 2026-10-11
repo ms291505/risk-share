@@ -1,42 +1,92 @@
 import TextField, { type TextFieldProps } from '@mui/material/TextField'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useWorkspaceStore } from '../state/store'
 
-type CommitTextFieldProps = Omit<TextFieldProps, 'value' | 'onChange' | 'onBlur' | 'error' | 'helperText'> & {
+export type ParseResult = { ok: true; value: string } | { ok: false; error: string }
+
+export type CommitTextFieldProps = Omit<TextFieldProps, 'value' | 'onChange' | 'onBlur' | 'error' | 'helperText'> & {
   value: string
   /** Called once per edit, when the field loses focus or Enter is pressed (§12.5). */
   onCommit(value: string): void
+  /**
+   * Turns the text into the value to commit. Text it can't read stays in the
+   * field with the error, and nothing is committed.
+   */
+  parse?(text: string): ParseResult
   /** Inline error for the committed value; linked to the field for screen readers (§13.4). */
   error?: string | null
+  /** Id of an element that further describes the field, e.g. its unit, read after any error. */
+  describedBy?: string
 }
 
 /**
  * A text field that edits a local draft and commits it as one undo step.
- * While focused, Cmd/Ctrl+Z is the browser's in-field undo (§12.2). Escape
- * discards the draft. Read-only while another tab is the editor (§11.1).
+ * While focused, Cmd/Ctrl+Z is the browser's in-field undo (§12.2). Escape,
+ * or a change to `value` from elsewhere (app undo, another tab), discards the
+ * draft. Read-only while another tab is the editor (§11.1).
  */
-export function CommitTextField({ value, onCommit, error, onKeyDown, slotProps, ...props }: CommitTextFieldProps) {
+export function CommitTextField({
+  value,
+  onCommit,
+  parse,
+  error,
+  describedBy,
+  onKeyDown,
+  slotProps,
+  ...props
+}: CommitTextFieldProps) {
   const readOnly = useWorkspaceStore((s) => s.readOnly)
+  const autoId = useId()
+  const id = props.id ?? autoId
   // null when not editing, so external changes (e.g. app undo) show through.
   const [draft, setDraft] = useState<string | null>(null)
-  const commit = () => {
-    if (draft !== null && draft !== value) onCommit(draft)
+  const [parseError, setParseError] = useState<string | null>(null)
+  const [shownValue, setShownValue] = useState(value)
+  const discard = () => {
     setDraft(null)
+    setParseError(null)
   }
+  if (value !== shownValue) {
+    setShownValue(value)
+    discard()
+  }
+  const commit = () => {
+    if (draft === null) return
+    const parsed = parse ? parse(draft) : { ok: true as const, value: draft }
+    if (!parsed.ok) {
+      setParseError(parsed.error)
+      return
+    }
+    if (draft !== value) onCommit(parsed.value)
+    discard()
+  }
+  const shownError = parseError ?? error
+
+  const htmlInput = typeof slotProps?.htmlInput === 'object' ? slotProps.htmlInput : undefined
+  // MUI links the error itself, unless another description replaces its own.
+  const descriptions = describedBy && [shownError && `${id}-helper-text`, htmlInput?.['aria-describedby'], describedBy]
   return (
     <TextField
       {...props}
-      slotProps={readOnly ? { ...slotProps, htmlInput: { ...slotProps?.htmlInput, readOnly: true } } : slotProps}
+      id={id}
+      slotProps={{
+        ...slotProps,
+        htmlInput: {
+          ...htmlInput,
+          ...(readOnly && { readOnly: true }),
+          ...(descriptions && { 'aria-describedby': descriptions.filter(Boolean).join(' ') }),
+        },
+      }}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !props.multiline) commit()
-        else if (e.key === 'Escape') setDraft(null)
+        else if (e.key === 'Escape') discard()
         onKeyDown?.(e)
       }}
-      error={Boolean(error)}
-      helperText={error ?? undefined}
+      error={Boolean(shownError)}
+      helperText={shownError ?? undefined}
     />
   )
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { D } from '../calc'
-import { direction, makeFormatters } from './formatters'
+import { direction, gainOrLoss, makeFormatters, unroundedPct } from './formatters'
 
 describe('makeFormatters', () => {
   const f = makeFormatters('en-US', 'USD')
@@ -29,5 +29,32 @@ describe('direction', () => {
     expect(direction(D(5), parties)).toBe('Lisa pays Bob')
     expect(direction(-1, parties)).toBe('Bob pays Lisa')
     expect(direction(D(0), parties)).toBe('No payment')
+  })
+})
+
+describe('accountingCurrency', () => {
+  it('puts losses in parentheses, in every locale', () => {
+    expect(makeFormatters('en-US', 'USD').accountingCurrency(D('-5000.5'))).toBe('($5,000.50)')
+    expect(makeFormatters('en-US', 'USD').accountingCurrency(D('5000.5'))).toBe('$5,000.50')
+    expect(makeFormatters('de-DE', 'EUR').accountingCurrency(D('-5000.5'))).toBe('(5.000,50\u00a0€)')
+  })
+})
+
+describe('gainOrLoss', () => {
+  const f = makeFormatters('en-US', 'USD')
+  it('says which in words', () => {
+    expect(gainOrLoss(D('199500'), f)).toBe('Gain $199,500.00')
+    expect(gainOrLoss(D('-5000.5'), f)).toBe('Loss $5,000.50')
+    expect(gainOrLoss(D('0'), f)).toBe('Break-even')
+  })
+})
+
+describe('unroundedPct', () => {
+  const f = makeFormatters('en-US', 'USD')
+  it('is exact up to 4 decimals, and approximate after', () => {
+    expect(unroundedPct(D('80.05'), f)).toBe('80.05%')
+    expect(unroundedPct(D('80'), f)).toBe('80%')
+    expect(unroundedPct(D('80.04999'), f)).toBe('≈80.0500%')
+    expect(unroundedPct(D(100).div(3), f)).toBe('≈33.3333%')
   })
 })
