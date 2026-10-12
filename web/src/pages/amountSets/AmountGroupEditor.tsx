@@ -11,7 +11,7 @@ import { partyName } from '../../format/parties'
 import { useIssueMessage } from '../../format/useIssueMessage'
 import { componentTotals, replaceComponentsWithTotal, splitIntoComponents, type GroupKey } from '../../state/amountSets'
 import { useWorkspaceStore } from '../../state/store'
-import { ComponentsTable } from './ComponentsTable'
+import { ComponentsEditor } from './ComponentsEditor'
 import { focusById, focusIds } from './focus'
 import { GROUP_LABELS, issueAt } from './labels'
 import { currentAmountSet, updateAmountSet, updateGroup } from './updateAmountSet'
@@ -95,7 +95,7 @@ export function AmountGroupEditor({ set, groupKey, issues }: Props) {
       {group.mode === 'total' ? (
         <TotalField set={set} groupKey={groupKey} issues={issues} />
       ) : (
-        <ComponentsTable set={set} groupKey={groupKey} issues={issues} />
+        <ComponentsEditor set={set} groupKey={groupKey} issues={issues} />
       )}
       <UseTotalDialog
         preview={totalPreview}

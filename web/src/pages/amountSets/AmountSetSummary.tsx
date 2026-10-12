@@ -1,7 +1,7 @@
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import { useId, type ReactNode } from 'react'
+import { useId } from 'react'
 import type Big from 'big.js'
 import { unroundedCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
 import { AccountingAmount } from '../../components/AccountingAmount'
@@ -10,6 +10,7 @@ import { useFormatters } from '../../format/useFormatters'
 import { useIssueMessage } from '../../format/useIssueMessage'
 import { useWorkspaceStore } from '../../state/store'
 import { issueField, paidByLabel } from './labels'
+import { TermRow } from './TermRow'
 
 /**
  * The set's totals and its cost ratio before rounding, which each set of
@@ -38,11 +39,11 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
     content = (
       <Stack component="dl" spacing={1} sx={{ m: 0 }}>
         {amounts.map(([term, value]) => (
-          <SummaryRow key={term} term={term}>
+          <TermRow key={term} term={term}>
             <AccountingAmount value={value} />
-          </SummaryRow>
+          </TermRow>
         ))}
-        <SummaryRow term="Cost ratio">{`${unroundedPct(cr, f)} (before rounding)`}</SummaryRow>
+        <TermRow term="Cost ratio">{`${unroundedPct(cr, f)} (before rounding)`}</TermRow>
       </Stack>
     )
   } else {
@@ -65,24 +66,6 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
         Summary
       </Typography>
       <Box role="status">{content}</Box>
-    </Box>
-  )
-}
-
-/**
- * A term and its value, right-aligned. Where both don't fit on one line, the
- * value moves under the term. The term wraps rather than being cut off: this
- * is the one place a long counterparty name is shown in full.
- */
-function SummaryRow({ term, children }: { term: string; children: ReactNode }) {
-  return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 3 }}>
-      <Typography component="dt" sx={{ flex: '1 1 8em', minWidth: 0, overflowWrap: 'anywhere' }}>
-        {term}
-      </Typography>
-      <Typography component="dd" sx={{ m: 0, ml: 'auto', textAlign: 'end', fontVariantNumeric: 'tabular-nums' }}>
-        {children}
-      </Typography>
     </Box>
   )
 }

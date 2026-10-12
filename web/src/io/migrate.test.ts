@@ -30,6 +30,7 @@ describe('migrate (§11.2)', () => {
 
 describe('v1 → v2: the counterparty-paid amount moves to components (§4.6)', () => {
   const v1 = (additions: Record<string, unknown>, counterparty = 'Bob') => ({
+    settings: { currency: 'EUR', locale: 'de-DE' },
     parties: { riskBearer: 'Lisa', counterparty },
     amountSets: [{ id: 'a', name: 'A', additions, deductions: { mode: 'total', total: '0', components: [] } }],
   })
@@ -71,7 +72,7 @@ describe('v1 → v2: the counterparty-paid amount moves to components (§4.6)', 
   it('leaves the rest blank when an amount is not a number, keeping the old total in its name', () => {
     expect(additionsAfter(total('abc')).components).toMatchObject([
       { amount: 'abc' },
-      { name: 'Other additions (total was 1000.00)', amount: '' },
+      { name: 'Other additions (total was 1.000,00)', amount: '' },
     ])
     expect(additionsAfter(total('5', 'x')).components).toMatchObject([
       { amount: '5' },
@@ -90,6 +91,13 @@ describe('v1 → v2: the counterparty-paid amount moves to components (§4.6)', 
   it('drops the amount where components were in use, since it was inactive', () => {
     const components = { mode: 'components', total: '0', paidByCounterparty: '5', components: [] }
     expect(additionsAfter(components)).toEqual({ mode: 'components', total: '0', components: [] })
+  })
+
+  it('keeps the names it makes within the 80-character limit', () => {
+    const [paid] = additionsAfter(total('400'), 'N'.repeat(80)).components as { name: string }[]
+    expect(paid.name).toBe(`Paid by ${'N'.repeat(72)}`)
+    const [, rest] = additionsAfter(total('abc', 'x'.repeat(70))).components as { name: string }[]
+    expect(rest.name).toBe('Other additions')
   })
 
   it('names the counterparty by role when its name is blank', () => {

@@ -195,6 +195,28 @@ describe('amount sets view (§4)', () => {
     expect(screen.getByRole('dialog').textContent).toContain('Remove both components and use a total of ($15,000.00)')
   })
 
+  it('stacks components where the table would not fit, keeping amounts whole', () => {
+    // jsdom measures every element as 0px wide once there's a ResizeObserver.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    )
+    store.getState().load(workspaceWith({ amountSets: [amounts('1000', '0', '250')], parties: LISA_AND_BOB }))
+    renderAt('/amounts')
+    const additions = within(section('Additions'))
+    expect(additions.queryByRole('table')).toBeNull()
+    const items = within(additions.getByRole('list', { name: 'Additions components' })).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(input('Amount, Other additions').value).toBe('750.00')
+    expect(additions.getByRole('checkbox', { name: 'Paid by Bob, Other additions' })).toBeDefined()
+    fireEvent.click(additions.getByRole('button', { name: 'Remove Paid by counterparty' }))
+    expect(document.activeElement).toBe(additions.getByRole('button', { name: 'Remove Other additions' }))
+    expect(additions.getByText('Total additions').nextElementSibling?.textContent).toBe('$750.00')
+  })
+
   it('lists sets in a select below md (§1.5)', async () => {
     vi.stubGlobal('matchMedia', (media: string) => ({
       matches: true,

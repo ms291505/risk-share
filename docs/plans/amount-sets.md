@@ -94,7 +94,7 @@ The single new issue code `unreadableNumber`, with `{ example, decimal }`, gives
   - Name, plus **Duplicate** and **Delete**.
   - An **Additions** section and a **Deductions** section (`AmountGroupEditor`):
     - **Total mode:** the total field, and **Split into components**.
-    - **Components mode** (`ComponentsTable`): Name, Amount, a "Paid by ‹counterparty›" checkbox (additions only) and Remove; **Add component** right under the rows; then the total (and for additions, the counterparty-paid amount). **Use a total instead…** opens `UseTotalDialog`. Adding focuses the new row's name. Removing focuses the next row, or **Add component**.
+    - **Components mode** (`ComponentsEditor`): Name, Amount, a "Paid by ‹counterparty›" checkbox (additions only) and Remove; **Add component** right under them; then the total (and for additions, the counterparty-paid amount). A table (`ComponentsTable`) where the editor is at least 600px wide, otherwise one block per component (`ComponentsStack`), so amounts are never cut off. The choice follows the editor's measured width, not the screen's. **Use a total instead…** opens `UseTotalDialog`. Adding focuses the new row's name. Removing focuses the next row, or **Add component**.
     - Each input's accessible label includes its row, e.g. "Amount, Rent rebate".
 - **`AmountSetSummary`** (`role="status"`, so changes are announced politely, §13.4):
   - Total additions, total deductions, "Gain (loss)", counterparty-paid, and the exact unrounded CR. Negative amounts are in parentheses (`AccountingAmount`).
