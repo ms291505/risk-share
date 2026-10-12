@@ -106,14 +106,28 @@ export function AmountSetsPage() {
           {newButton}
         </Stack>
       ) : (
-        <Stack direction={compact ? 'column' : 'row'} spacing={3} sx={{ width: '100%', alignItems: 'flex-start' }}>
-          <Stack
-            spacing={1}
-            sx={{ width: compact ? '100%' : 260, minWidth: 0, flexShrink: 0, alignItems: 'flex-start' }}
-          >
-            {newButton}
-            <AmountSetList sets={sets} selectedId={amountSetId} compact={compact} />
-          </Stack>
+        // Stretched when compact, so a wide components table scrolls in its own box instead of the page.
+        <Stack
+          direction={compact ? 'column' : 'row'}
+          spacing={3}
+          sx={{ width: '100%', alignItems: compact ? 'stretch' : 'flex-start' }}
+        >
+          {compact ? (
+            <Stack
+              component="nav"
+              aria-label="Amount sets"
+              spacing={1.5}
+              sx={{ p: 2, borderRadius: 1, bgcolor: 'action.hover', alignItems: 'flex-start' }}
+            >
+              <AmountSetList sets={sets} selectedId={amountSetId} compact />
+              {newButton}
+            </Stack>
+          ) : (
+            <Stack spacing={1} sx={{ width: 260, minWidth: 0, flexShrink: 0, alignItems: 'flex-start' }}>
+              {newButton}
+              <AmountSetList sets={sets} selectedId={amountSetId} compact={false} />
+            </Stack>
+          )}
           {selected ? (
             <AmountSetEditor
               key={selected.id}

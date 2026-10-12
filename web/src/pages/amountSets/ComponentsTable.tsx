@@ -85,8 +85,9 @@ export function ComponentsTable({ set, groupKey, issues }: Props) {
     focusById(next ? focusIds.removeComponent(next.id) : focusIds.addComponent(groupKey))
   }
 
+  // Positioned, so the visually hidden header stays inside the scrolling box.
   return (
-    <Box sx={{ width: '100%', overflowX: 'auto' }}>
+    <Box sx={{ position: 'relative', width: '100%', overflowX: 'auto' }}>
       <Table size="small" aria-label={`${groupLabel} components`}>
         <TableHead>
           <TableRow>

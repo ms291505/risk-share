@@ -1,10 +1,10 @@
 import Box from '@mui/material/Box'
+import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useId, type ReactNode } from 'react'
 import type Big from 'big.js'
 import { unroundedCR, type AmountResult, type AmountSet, type Issue } from '../../calc'
 import { AccountingAmount } from '../../components/AccountingAmount'
-import { truncated } from '../../components/truncated'
 import { unroundedPct } from '../../format/formatters'
 import { useFormatters } from '../../format/useFormatters'
 import { useIssueMessage } from '../../format/useIssueMessage'
@@ -36,14 +36,14 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
       [paidByLabel(parties), counterpartyPaid],
     ]
     content = (
-      <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: 1, columnGap: 3, m: 0 }}>
+      <Stack component="dl" spacing={1} sx={{ m: 0 }}>
         {amounts.map(([term, value]) => (
           <SummaryRow key={term} term={term}>
             <AccountingAmount value={value} />
           </SummaryRow>
         ))}
         <SummaryRow term="Cost ratio">{`${unroundedPct(cr, f)} (before rounding)`}</SummaryRow>
-      </Box>
+      </Stack>
     )
   } else {
     content = (
@@ -69,15 +69,20 @@ export function AmountSetSummary({ set, result }: { set: AmountSet; result: Amou
   )
 }
 
+/**
+ * A term and its value, right-aligned. Where both don't fit on one line, the
+ * value moves under the term. The term wraps rather than being cut off: this
+ * is the one place a long counterparty name is shown in full.
+ */
 function SummaryRow({ term, children }: { term: string; children: ReactNode }) {
   return (
-    <>
-      <Typography component="dt" title={term} sx={{ ...truncated, maxWidth: 240 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 3 }}>
+      <Typography component="dt" sx={{ flex: '1 1 8em', minWidth: 0, overflowWrap: 'anywhere' }}>
         {term}
       </Typography>
-      <Typography component="dd" sx={{ m: 0, textAlign: 'end', fontVariantNumeric: 'tabular-nums' }}>
+      <Typography component="dd" sx={{ m: 0, ml: 'auto', textAlign: 'end', fontVariantNumeric: 'tabular-nums' }}>
         {children}
       </Typography>
-    </>
+    </Box>
   )
 }

@@ -29,5 +29,6 @@ describe('withSuffix', () => {
     const result = withSuffix(`${'a'.repeat(70)} ${'b'.repeat(9)}`, ' (copy)')
     expect(nameLength(result)).toBe(MAX_NAME_LENGTH)
     expect(withSuffix(`${'a'.repeat(72)} bbbb`, ' (copy)')).toBe(`${'a'.repeat(72)} (copy)`)
+    expect(withSuffix('  ', ' (copy)')).toBe('(copy)')
   })
 })

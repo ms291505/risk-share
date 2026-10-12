@@ -17,7 +17,7 @@ import { amountSetPath } from './paths'
 interface Props {
   sets: AmountSet[]
   selectedId: string | undefined
-  /** Below `md` the list becomes a select, to leave room for the editor (§1.5). */
+  /** Below `md` the list becomes a select above the editor, to leave it the width (§1.5). */
   compact: boolean
 }
 
@@ -32,21 +32,23 @@ export function AmountSetList({ sets, selectedId, compact }: Props) {
   }, [sets, currency, f])
 
   if (compact) {
-    const selected = sets.some((s) => s.id === selectedId)
+    // Names only, so the closed field isn't cut off mid-status; invalid sets are still marked.
+    const index = sets.findIndex((s) => s.id === selectedId)
     return (
       <TextField
         select
         id={focusIds.list}
-        label="Amount set"
-        value={selected ? selectedId : ''}
+        label="Switch amount set"
+        value={index < 0 ? '' : selectedId}
+        helperText={index < 0 ? `${sets.length} amount sets` : `${index + 1} of ${sets.length}`}
         onChange={(e) => navigate(amountSetPath(e.target.value))}
         slotProps={{ select: { native: true } }}
         fullWidth
       >
-        {!selected && <option value="" disabled />}
+        {index < 0 && <option value="" disabled />}
         {sets.map((set) => (
           <option key={set.id} value={set.id}>
-            {`${set.name} — ${statuses.get(set.id)!.text}`}
+            {statuses.get(set.id)!.ok ? set.name : `${set.name} (needs attention)`}
           </option>
         ))}
       </TextField>

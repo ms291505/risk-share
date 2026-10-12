@@ -88,7 +88,7 @@ The single new issue code `unreadableNumber`, with `{ example, decimal }`, gives
   - No sets: an empty state with **New amount set**.
   - `/amounts` with sets: replace-navigate to the first one.
   - An unknown id (e.g. after undoing a create): "This amount set no longer exists", with a link back.
-  - Below `md` (tablet), the list becomes a select above the editor.
+  - Below `md` (tablet), the list becomes a "Switch amount set" select ("3 of 7") in its own navigation box above the editor, followed by **New amount set**. Nothing may make the page scroll sideways, down to 320px (WCAG reflow); a components table scrolls in its own box.
 - **`AmountSetList`:** for each set, its name and either its gain/loss or "Needs attention" (an icon plus text, never color alone).
 - **`AmountSetEditor`:**
   - Name, plus **Duplicate** and **Delete**.

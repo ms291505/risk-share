@@ -48,46 +48,41 @@ function subtract(a: string, b: string): string {
   return n < 0n ? `-${abs}` : abs
 }
 
-function minorUnitsOf(currency: unknown): number {
-  try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: String(currency) }).resolvedOptions()
-      .maximumFractionDigits!
-  } catch {
-    return 2
-  }
-}
-
 /**
  * v1 → v2: additions entered as a total could carry a counterparty-paid
  * amount; from v2 only marked components record it (§4.6). Such a total
  * becomes components, "Paid by ‹counterparty›" (marked) and "Other
- * additions" (the rest), so results don't change. Where either amount isn't
- * valid for the currency, "Other additions" keeps the whole total, so the
- * one error is on the amount the user entered. Components kept inactive
- * beside the total are replaced, as splitting a total does (§4.3).
+ * additions" (the rest), so results don't change. The rest is exact even
+ * when an amount has too many decimals, so both rows show the error and the
+ * sum stays right. Where either amount isn't a number, the rest is left
+ * blank, keeping the set invalid rather than letting the total change once
+ * the paid amount is fixed; the old total is kept in the row's name.
+ * Components kept inactive beside the total are replaced, as splitting a
+ * total does (§4.3).
  */
 function v1ToV2(doc: WorkspaceDoc): WorkspaceDoc {
   if (!Array.isArray(doc.amountSets)) return doc
   const name = isObj(doc.parties) && typeof doc.parties.counterparty === 'string' ? doc.parties.counterparty.trim() : ''
   const counterparty = name || 'Counterparty'
-  const minorUnits = minorUnitsOf(isObj(doc.settings) ? doc.settings.currency : undefined)
-  return { ...doc, amountSets: doc.amountSets.map((set) => v1AmountSet(set, counterparty, minorUnits)) }
+  return { ...doc, amountSets: doc.amountSets.map((set) => v1AmountSet(set, counterparty)) }
 }
 
-function v1AmountSet(set: unknown, counterparty: string, minorUnits: number): unknown {
+function v1AmountSet(set: unknown, counterparty: string): unknown {
   if (!isObj(set) || !isObj(set.additions)) return set
   const { paidByCounterparty, ...additions } = set.additions
   const paid = typeof paidByCounterparty === 'string' ? paidByCounterparty.trim() : ''
   if (additions.mode !== 'total' || paid === '' || isZero(paid)) return { ...set, additions }
 
   const total = additions.total
-  const isAmount = (s: unknown): s is string => typeof s === 'string' && DECIMAL.test(s) && decimalsOf(s) <= minorUnits
-  const rest = isAmount(total) && isAmount(paid) ? subtract(total, paid) : total
-  const components: Record<string, unknown>[] = [
-    { id: crypto.randomUUID(), name: `Paid by ${counterparty}`, amount: paid, paidByCounterparty: true },
-  ]
-  if (!(typeof rest === 'string' && isZero(rest))) {
-    components.push({ id: crypto.randomUUID(), name: 'Other additions', amount: rest })
+  const paidRow = { id: crypto.randomUUID(), name: `Paid by ${counterparty}`, amount: paid, paidByCounterparty: true }
+  const components: Record<string, unknown>[] = [paidRow]
+  if (typeof total === 'string' && DECIMAL.test(total) && DECIMAL.test(paid)) {
+    const rest = subtract(total, paid)
+    if (!isZero(rest)) components.push({ id: crypto.randomUUID(), name: 'Other additions', amount: rest })
+  } else {
+    const name =
+      typeof total === 'string' && total.trim() ? `Other additions (total was ${total.trim()})` : 'Other additions'
+    components.push({ id: crypto.randomUUID(), name, amount: '' })
   }
   return { ...set, additions: { ...additions, mode: 'components', components } }
 }

@@ -44,7 +44,7 @@ export function AmountSetEditor({ set, onDuplicate, onDelete }: Props) {
               s.name = normalizeName(name)
             })
           }
-          sx={{ flexGrow: 1, minWidth: 240 }}
+          sx={{ flex: '1 1 240px', minWidth: 0 }}
         />
         <Button startIcon={<ContentCopyOutlined />} disabled={readOnly} onClick={onDuplicate} sx={{ mt: 1 }}>
           Duplicate

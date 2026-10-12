@@ -64,10 +64,19 @@ describe('v1 → v2: the counterparty-paid amount moves to components (§4.6)', 
     expect(additionsAfter(total('1500')).components).toMatchObject([{ amount: '1500' }, { amount: '-500.00' }])
   })
 
-  it('keeps the whole total in "Other additions" when an amount is not valid for the currency', () => {
-    expect(additionsAfter(total('400.005')).components).toMatchObject([{ amount: '400.005' }, { amount: '1000.00' }])
-    expect(additionsAfter(total('abc')).components).toMatchObject([{ amount: 'abc' }, { amount: '1000.00' }])
-    expect(additionsAfter(total('5', 'x')).components).toMatchObject([{ amount: '5' }, { amount: 'x' }])
+  it('splits exactly when an amount has too many decimals, so the sum stays right', () => {
+    expect(additionsAfter(total('400.005')).components).toMatchObject([{ amount: '400.005' }, { amount: '599.995' }])
+  })
+
+  it('leaves the rest blank when an amount is not a number, keeping the old total in its name', () => {
+    expect(additionsAfter(total('abc')).components).toMatchObject([
+      { amount: 'abc' },
+      { name: 'Other additions (total was 1000.00)', amount: '' },
+    ])
+    expect(additionsAfter(total('5', 'x')).components).toMatchObject([
+      { amount: '5' },
+      { name: 'Other additions (total was x)', amount: '' },
+    ])
   })
 
   it.each([

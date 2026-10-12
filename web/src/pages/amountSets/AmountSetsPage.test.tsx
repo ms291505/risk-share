@@ -208,8 +208,13 @@ describe('amount sets view (§4)', () => {
     const b = { ...amounts('0', '0'), id: 'b', name: 'Forecast' }
     store.getState().load(workspaceWith({ amountSets: [a, b] }))
     const router = renderAt('/amounts/a')
-    const select = screen.getByRole('combobox', { name: 'Amount set' }) as HTMLSelectElement
-    expect([...select.options].map((o) => o.text)).toEqual(['Actuals — Gain $1.00', 'Forecast — Needs attention'])
+    const nav = screen.getByRole('navigation', { name: 'Amount sets' })
+    const select = within(nav).getByRole('combobox', {
+      name: 'Switch amount set',
+      description: '1 of 2',
+    }) as HTMLSelectElement
+    expect([...select.options].map((o) => o.text)).toEqual(['Actuals', 'Forecast (needs attention)'])
+    expect(within(nav).getByRole('button', { name: 'New amount set' })).toBeDefined()
     fireEvent.change(select, { target: { value: 'b' } })
     await waitFor(() => expect(router.state.location.pathname).toBe('/amounts/b'))
   })
